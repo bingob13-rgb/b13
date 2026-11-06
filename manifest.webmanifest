@@ -1,0 +1,31 @@
+{
+ "id": "./",
+ "name": "BINGO B13",
+ "short_name": "B13",
+ "description": "B13 Bingo — በአማርኛ የሚጫወቱት ቢንጎ",
+ "lang": "am",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#1e3a8a",
+ "theme_color": "#21557f",
+ "icons": [
+  {
+   "src": "icons/b13_icon_192.png",
+   "sizes": "192x192",
+   "type": "image/png"
+  },
+  {
+   "src": "icons/b13_icon_512.png",
+   "sizes": "512x512",
+   "type": "image/png"
+  },
+  {
+   "src": "icons/b13_icon_maskable_512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

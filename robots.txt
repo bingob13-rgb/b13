@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://bingob13-rgb.github.io/b13/sitemap.xml
