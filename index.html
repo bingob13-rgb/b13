@@ -1518,7 +1518,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
           <b>በስልክዎ መጫወት<br>ከመረጡ</b>
           <small>v3.0</small>
         </div>
-        <button type="button" onclick="installApp()">📲 ወደ መነሻ ስክሪን ጫን (PWA)</button>
+        <button type="button" class="inst" onclick="installApp()">📲 ወደ መነሻ ስክሪን ጫን (PWA)</button>
       </div>
     </div>
     <div id="pSign" class="hidden fade space-y-3 max-w-md mx-auto">
@@ -4836,47 +4836,52 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 window.addEventListener('appinstalled', () => {
   _ip = null;
+  try { localStorage.setItem('b13_installed', '1'); } catch (e) {}
   document.querySelectorAll('.inst').forEach(b => b.classList.add('hidden'));
   toast('✓ አፑ ተጭኗል');
 });
 async function installApp() {
-  // 1) Native Chrome/Edge install sheet (best path)
   if (_ip) {
     try {
       _ip.prompt();
       const choice = await _ip.userChoice;
       _ip = null;
-      if (choice?.outcome === 'accepted') toast('✓ በመጫን ላይ…');
+      if (choice?.outcome === 'accepted') toast('✓ አፑ ተጭኗል');
       return;
     } catch (err) { _ip = null; }
   }
-  // 2) Opened as a downloaded file → browser blocks PWA install
+  if (isStandalone) { toast('አፑ አስቀድሞ ተጭኗል', 'i'); return; }
   if (isLocalFile) {
-    toast('ከማውረጃ ፋይል ቀጥታ አይጫንም። አፑን በ https ድረ-ገጽ ይክፈቱ — ከዚያ ይህ ቁልፍ የChrome ጭነት መስኮት ይከፍታል', 'i');
+    toast('ከማውረጃ ፋይል አይጫንም። https://bingob13-rgb.github.io/b13/ ይክፈቱ', 'i');
     return;
   }
-  // 3) iOS Safari has no beforeinstallprompt
-  if (isIOS) {
-    toast('Safari: Share ⬆️ → "Add to Home Screen" ይጫኑ', 'i');
-    return;
-  }
-  // 4) HTTPS but prompt not ready yet — brief wait then tip
-  toast('ጭነት በመጠበቅ… አንድ ሰከንድ', 'i');
-  await new Promise(r => setTimeout(r, 1200));
+  if (isIOS) { toast('Safari: Share ⬆️ → Add to Home Screen', 'i'); return; }
+  try { if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js'); } catch (e) {}
+  toast('ጭነት በመጠበቅ…', 'i');
+  for (let i = 0; i < 8 && !_ip; i++) await new Promise(r => setTimeout(r, 400));
   if (_ip) {
-    try {
-      _ip.prompt();
-      await _ip.userChoice;
-      _ip = null;
-      return;
-    } catch (e) {}
+    try { _ip.prompt(); await _ip.userChoice; _ip = null; return; } catch (e) {}
   }
-  toast('ብራውዘር ሜኑ (⋮) → "Install app" ወይም "Add to Home screen" ይጫኑ', 'i');
+  toast('⋮ ሜኑ → «Install app» ወይም «Add to Home screen» ይጫኑ', 'i');
 }
-if (!isStandalone) {
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.inst').forEach(b => b.classList.remove('hidden'));
-  });
+function hideInstallButtons() {
+  document.querySelectorAll('.inst').forEach(b => b.classList.add('hidden'));
+}
+function showInstallButtons() {
+  document.querySelectorAll('.inst').forEach(b => b.classList.remove('hidden'));
+}
+function isAppInstalled() {
+  return matchMedia('(display-mode: standalone)').matches
+    || matchMedia('(display-mode: fullscreen)').matches
+    || matchMedia('(display-mode: minimal-ui)').matches
+    || !!navigator.standalone
+    || (function(){ try { return localStorage.getItem('b13_installed') === '1'; } catch(e){ return false; } })();
+}
+if (isAppInstalled()) {
+  document.addEventListener('DOMContentLoaded', hideInstallButtons);
+  try { hideInstallButtons(); } catch (e) {}
+} else {
+  document.addEventListener('DOMContentLoaded', showInstallButtons);
 }
 if ('serviceWorker' in navigator && !isLocalFile) {
   window.addEventListener('load', () => {
