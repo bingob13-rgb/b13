@@ -18,8 +18,12 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-body {
+html, body {
+  height: 100%;
   margin: 0;
+  overflow: hidden;
+}
+body {
   background: #070a14;
   color: #e8ecf8;
   font-family: 'Inter', 'Noto Sans Ethiopic', system-ui, sans-serif;
@@ -272,8 +276,8 @@ header.grad b {
   flex: 1;
   min-width: 0;
   aspect-ratio: 1;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  background: #eef1f6;
   color: #94a3b8;
   font-size: 11px;
   font-weight: 700;
@@ -282,23 +286,28 @@ header.grad b {
   justify-content: center;
 }
 .num[class*="d-"] {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 6px rgba(0,0,0,0.3);
-  text-shadow: 0 1px 1px rgba(0,0,0,0.3);
   color: #fff;
+  font-weight: 800;
+  box-shadow: none;
+  text-shadow: none;
 }
-.num.d-B { background: linear-gradient(145deg, #3b82f6, #1d4ed8); }
-.num.d-I { background: linear-gradient(145deg, #f87171, #dc2626); }
-.num.d-N { background: linear-gradient(145deg, #4ade80, #16a34a); }
-.num.d-G { background: linear-gradient(145deg, #a78bfa, #7c3aed); }
-.num.d-O { background: linear-gradient(145deg, #fb923c, #ea580c); }
+/* bingo1020-style solid row colors */
+.num.d-B { background: #16a34a; }
+.num.d-I { background: #0ea5e9; }
+.num.d-N { background: #6366f1; }
+.num.d-G { background: #e11d75; }
+.num.d-O { background: #ea580c; }
 .num.last {
-  outline: 3px solid #60a5fa;
+  outline: 3px solid #a855f7;
   outline-offset: 1px;
+  box-shadow: 0 0 0 2px #fff, 0 0 14px 3px rgba(168,85,247,0.55);
   animation: lastp 1.4s ease-in-out infinite;
+  z-index: 1;
+  position: relative;
 }
 @keyframes lastp {
-  0%, 100% { box-shadow: 0 0 12px 2px rgba(96,165,250,0.55); }
-  50% { box-shadow: 0 0 22px 6px rgba(96,165,250,0.9); }
+  0%, 100% { box-shadow: 0 0 0 2px #fff, 0 0 12px 2px rgba(168,85,247,0.45); }
+  50% { box-shadow: 0 0 0 2px #fff, 0 0 20px 5px rgba(168,85,247,0.85); }
 }
 
 /* ========== TAGS & CHIPS ========== */
@@ -349,6 +358,8 @@ header.grad b {
   box-shadow: 0 0 0 2px rgba(255,255,255,0.35);
 }
 .h-ico:active { transform: scale(0.94); }
+.h-ico.spin { animation: refspin 0.7s linear infinite; pointer-events: none; }
+@keyframes refspin { to { transform: rotate(360deg); } }
 #bnav button {
   flex: 1;
   display: flex;
@@ -1320,17 +1331,38 @@ html.light .tip-row {
 html.light .kn{background:#f3f4f8;color:#111;border-color:#d4d4dc}
 
 .sm{padding:8px 12px;font-size:12px;width:auto;border-radius:10px}
-#app{min-height:100dvh}
-header.grad{position:sticky;top:0;z-index:40}
+#app{
+  height:100dvh;
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+header.grad{flex:none;position:relative;z-index:40}
 main{padding:6px 4px 8px}
-#cards{padding:0 0 96px;gap:8px!important}
-#app.bf{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-#app.bf>header{flex:none}
-#app.bf #topWrap{flex:none;max-height:50dvh;overflow-y:auto;overscroll-behavior:contain}
-#app.bf main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-#app.bf #pg-bingo{flex:1;min-height:0;display:flex;flex-direction:column}
-#app.bf #cards{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;align-content:start;grid-auto-rows:max-content}
+#cards{padding:0 0 120px;gap:8px!important;align-content:start;grid-auto-rows:max-content}
 #cards>.pc{min-height:max-content}
+/* ONE scroll area for bingo (and other pages): always works on mobile */
+#bingoScroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+}
+#topWrap{overflow:visible}
+#fabWrap{z-index:60;pointer-events:auto}
+#fabWrap button{pointer-events:auto}
+/* Sticky board: scroll down = info leaves; board stays (screenshot 2) */
+#boardBox{
+  position:-webkit-sticky !important;
+  position:sticky !important;
+  top:0 !important;
+  z-index:6 !important;
+  background:#fff !important;
+}
 .stat{display:flex;align-items:center;gap:10px;border-radius:16px;padding:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
 .stat .ic{width:34px;height:34px;flex:none;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px}
 html.light .stat{background:#fff;border-color:#e2e2e8}
@@ -1341,10 +1373,24 @@ html.light .stat{background:#fff;border-color:#e2e2e8}
 html.light .glass .lgb{color:#4f46e5;border-color:#c7c9f5;background:#f3f4ff}
 html.light .glass .lgb.on{background:#4f46e5;color:#fff}
 .otp{width:60px;height:64px;text-align:center;font-size:26px;font-weight:800;padding:0}
-.brow{display:flex;gap:2px;margin-bottom:3px;align-items:center}
-.brow b{width:22px;height:22px;flex:none;border-radius:6px;font-size:11px;display:flex;align-items:center;justify-content:center;border:1.5px solid}
+.brow{display:flex;gap:3px;margin-bottom:4px;align-items:center}
+.brow b{width:22px;height:22px;flex:none;border-radius:7px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:0;color:#fff}
 #tBall{display:none!important}
-#boardBox{background:#17171d;box-shadow:0 8px 14px rgba(0,0,0,.35)}
+#boardBox{
+  background:#fff !important;
+  border:1px solid #e8eef8 !important;
+  box-shadow:0 8px 24px rgba(15,23,42,0.08) !important;
+  color:#1d3f63;
+  position:-webkit-sticky !important;
+  position:sticky !important;
+  top:0 !important;
+  z-index:6 !important;
+}
+#boardBox .font-bold, #boardBox [data-i] { color:#334155 !important; }
+html:not(.light) #boardBox{
+  background:#fff !important;
+  border-color:#e8eef8 !important;
+}
 #fabWrap>button{box-shadow:0 10px 30px rgba(244,67,54,.6)}
 .pbox{background:rgba(15,23,42,.55);border-radius:12px;padding:10px;text-align:center;border:1px solid rgba(255,255,255,.08)}
 .pbox .text-slate-400, .pbox div:first-child{color:#cbd5e1!important;font-weight:600}
@@ -1518,7 +1564,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
           <b>በስልክዎ መጫወት<br>ከመረጡ</b>
           <small>v3.0</small>
         </div>
-        <button type="button" class="inst" onclick="installApp()">📲 ወደ መነሻ ስክሪን ጫን (PWA)</button>
+        <button type="button" class="inst" onclick="installApp()">↓ የAndroid መተግበሪያ አውርድ</button>
       </div>
     </div>
     <div id="pSign" class="hidden fade space-y-3 max-w-md mx-auto">
@@ -1566,6 +1612,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
       <span class="text-white font-extrabold tracking-wide text-base">B13</span>
     </button>
     <div class="flex items-center gap-1 shrink-0">
+      <button type="button" id="hRef" onclick="doRefresh()" class="h-ico" title="ሪፍሬሽ">🔄</button>
       <button type="button" id="hGames" onclick="go('keno')" class="h-ico" title="ጨዋታዎች">🎮</button>
       <button type="button" id="hSet" onclick="openM('mSet')" class="h-ico" title="ቅንብር">⚙️</button>
       <button type="button" id="hProf" onclick="go('profile')" class="h-ico" title="ፕሮፋይል">👤</button>
@@ -1573,11 +1620,14 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
     </div>
   </header>
 
+  <div id="bingoScroll">
   <div id="topWrap" class="flex-none">
     <div class="flex justify-end px-2 pb-1"><button id="btnInfoToggle" onclick="setPref('showInfo',!prefs.showInfo)" class="infotg open"><span class="lbl">Show Less</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button></div>
-    <div id="ballStrip" class="hidden glass p-3 mb-2">
-      <div class="flex justify-between items-center mb-2"><b class="text-[15px]">የወጡ ቁጥሮች:</b><span class="text-[12px] text-slate-400"><span>የወጡ ኳሶች ብዛት:</span> <span id="stripCnt">0</span></span></div>
-      <div id="stripRow" class="flex items-center gap-2.5 overflow-x-auto pb-1"></div>
+    <div id="ballStrip" class="hidden glass p-3 mb-2" style="background:#fff;border:1px solid #e8eef8;color:#1d3f63">
+      <div class="flex justify-end items-center mb-2">
+        <span class="text-[13px] font-bold" style="color:#334155">የወጡ ኳሶች ብዛት <span id="stripCnt">0/75</span></span>
+      </div>
+      <div id="stripRow" class="flex items-center gap-2.5 overflow-x-auto pb-1" style="-webkit-overflow-scrolling:touch"></div>
     </div>
     <div class="exp-only glass p-3 mb-2 text-[13px] space-y-2">
       <div class="flex gap-2 items-start"><span class="text-blue-400">🎮</span><span class="text-slate-400" data-i="gi_game">ጨዋታ:</span><b id="giType" class="flex-1">መስመር (Line)</b><button onclick="openHints(game?.type)" class="text-amber-400 text-xl">💡</button></div>
@@ -1594,10 +1644,10 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
       </div>
     </div>
 
-    <div id="boardBox" class="exp-only glass p-2.5 mb-2">
-      <div class="flex justify-center items-center px-1 mb-2">
-        <span class="font-bold text-[15px]"><span data-i="drawn_cnt">የወጡ ኳሶች ብዛት:</span> <span id="tCount">0</span></span>
-        <span id="tBall" class="ball B" style="width:54px;height:54px;font-size:16px;display:none"></span>
+    <div id="boardBox" class="glass p-2.5 mb-2">
+      <div class="flex justify-between items-center px-1 mb-2">
+        <span class="font-bold text-[14px]"><span data-i="drawn_cnt">የወጡ ኳሶች ብዛት</span> <span id="tCount" class="text-slate-800">0/75</span></span>
+        <span id="tBall" class="ball B" style="width:48px;height:48px;font-size:14px;display:none"></span>
       </div>
       <div id="board"></div>
     </div>
@@ -1608,7 +1658,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
 
     <p id="claimMsg" class="hidden text-center text-amber-400 font-bold text-[14px] py-1"></p>
     <p id="nextMsg" class="hidden text-center text-blue-400 font-bold text-[13px] py-1"></p>
-    <p id="finMsg" class="hidden text-center text-red-400 font-bold text-[14px] py-1" data-i="fin_msg">ቢንጎ የማለት ሰዓት ተጠናቋል!</p>
+    <p id="finMsg" class="hidden text-center text-red-400 font-bold text-[14px] py-1" data-i="fin_msg">በጨዋታ የምላሽ ሰዓት ተጠናቋል!</p>
   </div>
 
   <main>
@@ -1621,9 +1671,10 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
           <button class="btn b-bad sm" onclick="toggleSelMode()">✕</button>
         </div>
       </div>
-      <div id="regBar" class="hidden flex gap-2 mb-2">
+      <div id="regBar" class="hidden flex flex-wrap gap-2 mb-2">
         <button class="btn b-ok sm flex-1" onclick="regAll(true)">✓ ሁሉንም Register</button>
         <button class="btn b-gray sm flex-1" onclick="regAll(false)">✕ ሁሉንም Unregister</button>
+        <button class="btn b-bad sm flex-1" onclick="deleteAllMyCards()">🗑 ሁሉንም አጥፋ</button>
       </div>
       <div id="cards" class="grid gap-1.5"></div>
     </div>
@@ -1683,7 +1734,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
       </div>
       <div class="card pf-list">
         <button class="prow" onclick="openWallet('hist')"><i>🕘</i><span>የግብይት ታሪክ</span><em>›</em></button>
-        <button class="prow inst hidden" onclick="installApp()"><i>📲</i><span>አፑን በስልክ ጫን</span><em>›</em></button>
+        <button class="prow inst hidden" onclick="installApp()"><i>↓</i><span>የAndroid መተግበሪያ አውርድ</span><em>›</em></button>
         <button class="prow" onclick="openDrawer()"><i>⚙️</i><span>ሴቲንግ እና ማሳወቂያ</span><em>›</em></button>
         <button class="prow" onclick="document.getElementById('pwBox').classList.toggle('hidden')"><i>🔑</i><span>የይለፍ ቃል ቀይር</span><em>›</em></button>
         <button class="prow" onclick="openM('mRules')"><i>📘</i><span>የጨዋታ ደንቦችና ሕጎች</span><em>›</em></button>
@@ -1958,8 +2009,9 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
       </div>
     </div>
   </main>
+  </div><!-- /bingoScroll -->
 
-  <button id="floatBall" onclick="$('topWrap').scrollTo({top:0,behavior:'smooth'})" class="hidden fixed left-3 bottom-5 z-30 px-3 py-2 rounded-2xl bg-black/75 text-white items-center gap-2 shadow-2xl" style="display:flex"></button>
+  <button id="floatBall" onclick="($('bingoScroll')||$('topWrap')).scrollTo({top:0,behavior:'smooth'})" class="hidden fixed left-3 bottom-5 z-30 px-3 py-2 rounded-2xl bg-black/75 text-white items-center gap-2 shadow-2xl" style="display:flex"></button>
   <div class="fixed bottom-5 right-4 z-30 flex flex-col items-end gap-2" id="fabWrap">
     <div id="fabMenu" class="hidden flex-col gap-1.5 items-end max-h-[55vh] overflow-y-auto"></div>
     <p id="fabHint" class="text-[11px] text-emerald-300 font-bold bg-black/70 px-2 py-0.5 rounded-lg"></p>
@@ -2140,6 +2192,8 @@ const TG_LINK = 'https://t.me/'; // <- የቴሌግራም ሊንክዎን እዚ
 
 // ===================== STATE =====================
 let cur = null, settings = null, game = null, myCards = [], gameCards = [];
+let _markCache = new Map(); // cardId -> number[] persists during live game
+let _markGameId = null;
 let page = 'bingo', fabOpen = false, tick = null, _buying = false;
 let selMode = false, selected = new Set();
 let allTx = [], userMap = {}, oTabNow = 'fin', fTab = 'all';
@@ -2147,7 +2201,7 @@ let lastStripKey = '', lastCardsSig = '', lastBoardKey = '', boardVisible = true
 let autoUI = false, cfgDirty = false, delId = null, autoOK = true, cdTimer = null, tickN = 0, tickBusy = false, syncing = false, syncAgain = false;
 
 // ===================== PREFS / THEME / LANG =====================
-const PREF_DEF = { scrollMode:'cards', voice:false, autoMark:false, showInfo:true, sound:true, notify:true, gs:'reg', markAll:true, color:'red', order:'desc', cols:2, theme:'light', lang:'am' };
+const PREF_DEF = { scrollMode:'all', voice:false, autoMark:false, showInfo:true, sound:true, notify:true, gs:'reg', markAll:true, color:'red', order:'desc', cols:2, theme:'light', lang:'am' };
 let prefs = { ...PREF_DEF };
 try { prefs = { ...PREF_DEF, ...JSON.parse(localStorage.getItem('b13_prefs') || '{}') }; } catch (e) {}
 const COLORS = {
@@ -2666,15 +2720,18 @@ function applyPrefs() {
   document.documentElement.classList.toggle('light', prefs.theme === 'light');
   const t = (id, on) => $(id) && $(id).classList.toggle('on', !!on);
   t('tgNotify', prefs.notify); t('tgSound', prefs.sound); t('tgMarkAll', prefs.markAll); t('tgAutoMark', prefs.autoMark); t('tgVoice', prefs.voice);
+  // Show More (showInfo=true): game info + board + winners
+  // Show Less (showInfo=false): recent balls strip only (screenshot 3)
   document.querySelectorAll('.exp-only').forEach(e => e.classList.toggle('hidden', !prefs.showInfo));
-  if ($('ballStrip')) $('ballStrip').classList.toggle('hidden', prefs.showInfo);
+  if ($('boardBox')) $('boardBox').classList.toggle('hidden', !prefs.showInfo);
+  if ($('ballStrip')) $('ballStrip').classList.toggle('hidden', !!prefs.showInfo);
   const bt = $('btnInfoToggle'); if (bt) { bt.classList.toggle('open', !!prefs.showInfo); const lb = bt.querySelector('.lbl'); if (lb) lb.textContent = prefs.showInfo ? 'Show Less' : 'Show More'; }
   const s = (id, v) => $(id) && ($(id).value = v);
   s('sCols', prefs.cols); s('sOrder', prefs.order); s('sColor', prefs.color);
   s('sGs', prefs.gs); s('sTheme', prefs.theme); s('sLang', prefs.lang);
   document.querySelectorAll('.lgsel,.lgsel2').forEach(e => e.value = prefs.lang);
   s('sScroll', prefs.scrollMode);
-  if ($('app')) $('app').classList.toggle('bf', page === 'bingo' && prefs.scrollMode === 'cards');
+  if ($('app')) $('app').classList.toggle('bf', page === 'bingo');
   applyLang();
 }
 function askNotifyPerm() { try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} }
@@ -2782,9 +2839,14 @@ function sndWrong() {
     o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.4);
   });
 }
+// ---- English ball calling ----
 function speakBall(n) {
   if (!prefs.voice || !n || !('speechSynthesis' in window)) return;
-  try { const u = new SpeechSynthesisUtterance(letter(n) + ' ' + n); u.lang = 'en-US'; u.rate = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  try {
+    const u = new SpeechSynthesisUtterance(letter(n) + ' ' + n);
+    u.lang = 'en-US'; u.rate = 0.9;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (e) {}
 }
 function beep() { sndNotify(); }
 
@@ -2936,7 +2998,7 @@ function go(p, opts) {
   if (p in GAME_ON && !GAME_ON[p]) return toast('🔜 ' + (p === 'keno' ? 'Keno' : 'Avatar') + ' በቅርቡ ይጀምራል!');
   const prev = page;
   page = p;
-  $('app').classList.toggle('bf', p === 'bingo' && prefs.scrollMode === 'cards');
+  $('app').classList.toggle('bf', p === 'bingo'); // unified scroll always on bingo
   ['bingo','wallet','admin','owner','keno','avatar','profile'].forEach(x => $('pg-'+x).classList.toggle('hidden', x !== p));
   $('topWrap').classList.toggle('hidden', p !== 'bingo');
   $('fabWrap').classList.toggle('hidden', p !== 'bingo');
@@ -3228,28 +3290,116 @@ function genGrid() {
 }
 
 // ===================== CORE ACTIONS =====================
+function cardCost(c) {
+  return Number(c?.price ?? (c?.game_id ? gamePrice() : nextPrice()) ?? settings?.price ?? 50);
+}
+/** Balance needed to register the given cards (only those not already registered). */
+function regCost(cards) {
+  return (cards || []).filter(c => !c.registered).reduce((a, c) => a + cardCost(c), 0);
+}
+function ensureBalForReg(cards) {
+  const need = regCost(cards);
+  if (need <= 0) return true;
+  if (Number(cur?.balance || 0) < need) {
+    toast('Register ለማድረግ በቂ ቀሪ ሂሳብ የለዎትም — ' + fmt(need) + ' ብር ያስፈልጋል', 'e');
+    return false;
+  }
+  return true;
+}
+
 async function buy(n) {
   if (_buying) return;
   _buying = true;
   try {
-    fabOpen = false; $('fabMenu').classList.add('hidden');
-    const { data, error } = await sb.rpc('buy_cards', { p_n: n });
+    fabOpen = false;
+    const fm = $('fabMenu');
+    if (fm) { fm.classList.add('hidden'); fm.classList.remove('flex'); fm.style.display = 'none'; }
+
+    // Pass p_user so buy works even if header token is not resolved by SQL
+    let data = null, error = null;
+    const uid = cur?.id || null;
+    ({ data, error } = await sb.rpc('buy_cards', { p_n: n, p_allow_no_balance: true, p_user: uid }));
+    if (error) {
+      const em = ((error.message || '') + ' ' + (error.code || ''));
+      if (/p_user|p_allow_no_balance|Could not find|PGRST202|does not exist|42883|function/i.test(em)) {
+        ({ data, error } = await sb.rpc('buy_cards', { p_n: n, p_allow_no_balance: true }));
+      }
+    }
+    if (error) {
+      const em = ((error.message || '') + ' ' + (error.code || ''));
+      if (/p_allow_no_balance|Could not find|PGRST202|does not exist|42883|function/i.test(em)) {
+        ({ data, error } = await sb.rpc('buy_cards', { p_n: n }));
+      }
+    }
     if (error) {
       const m = error.message || '';
-      return toast(m.includes('MAX') ? 'ከፍተኛው ' + settings.max_cards + ' ካርድ' : m.includes('INSUFFICIENT') ? 'በቂ ቀሪ ሂሳብ የለዎትም' : isSchemaErr(error) ? 'security_setup.sql ገና አልተሰራም' : 'ስህተት', 'e');
+      if (/MAX/i.test(m)) return toast('ከፍተኛው ' + (settings?.max_cards || '') + ' ካርድ', 'e');
+      if (/INSUFFICIENT/i.test(m)) return toast('በቂ ቀሪ ሂሳብ የለዎትም — Register ለማድረግ ዲፖዚት ያድርጉ', 'e');
+      if (/NOT_LOGGED_IN|token/i.test(m)) return toast('እባክዎ እንደገና ይግቡ', 'e');
+      if (/BLOCKED/i.test(m)) return toast('መለያዎ ታግዷል', 'e');
+      if (isSchemaErr(error)) return toast('buy_cards SQL ገና አልተሰራም — Supabase SQL Editor ላይ buy_cards_register.sql ያሂዱ', 'e');
+      return toast('ስህተት፦ ' + m.slice(0, 80), 'e');
     }
-    cur.balance = Number(data.balance);
-    await refreshMyCards(); render();
-    toast(data.next ? n + ' ካርድ ለቀጣይ ጨዋታ ተገዝቷል — Register ማድረግ አይርሱ' : n + ' ካርድ ተገዝቷል — Register ማድረግ አይርሱ', 'i');
+    if (data?.balance != null) cur.balance = Number(data.balance);
+    lastCardsSig = '';
+    // Prefer cards returned by RPC (works even when RLS blocks table SELECT)
+    const returned = Array.isArray(data?.cards) ? data.cards : [];
+    if (returned.length) {
+      const byId = new Map(myCards.map(c => [c.id, c]));
+      returned.forEach(c => byId.set(c.id, c));
+      myCards = [...byId.values()].sort((a, b) => b.id - a.id);
+    }
+    await refreshMyCards();
+    if (!myCards.length && returned.length) {
+      myCards = returned;
+    }
+    if (!myCards.length && data?.ids?.length) {
+      await new Promise(r => setTimeout(r, 500));
+      await refreshMyCards();
+      if (!myCards.length && returned.length) myCards = returned;
+    }
+    lastCardsSig = '';
+    render();
+    if (!myCards.length) {
+      toast(n + ' ካርድ ተመርጧል — ማሳያ አልመጣም፣ 🔄 ይጫኑ', 'i');
+    } else {
+      toast(n + ' ካርድ ተመርጧል', 'i');
+    }
   } finally { _buying = false; }
+}
+
+async function applyRegister(ids, on) {
+  if (!ids.length) return false;
+  // Prefer server RPC (deducts balance when on=true). Fallback to direct update + client balance gate.
+  let { data, error } = await sb.rpc('register_cards', { p_ids: ids, p_on: !!on, p_user: cur?.id || null });
+  if (error && /p_user|register_cards|Could not find|PGRST202|does not exist/i.test((error.message || '') + (error.code || ''))) {
+    ({ data, error } = await sb.rpc('register_cards', { p_ids: ids, p_on: !!on }));
+  }
+  if (error && /register_cards|Could not find|PGRST202|does not exist/i.test((error.message || '') + (error.code || ''))) {
+    if (on) {
+      const list = myCards.filter(c => ids.includes(c.id));
+      if (!ensureBalForReg(list)) return false;
+    }
+    ({ error } = await sb.from('cards').update({ registered: !!on }).in('id', ids));
+    if (error) { toast('ስህተት', 'e'); return false; }
+    return true;
+  }
+  if (error) {
+    const m = error.message || '';
+    toast(m.includes('INSUFFICIENT') ? 'በቂ ቀሪ ሂሳብ የለዎትም' : 'ስህተት', 'e');
+    return false;
+  }
+  if (data?.balance != null) cur.balance = Number(data.balance);
+  return true;
 }
 
 async function toggleReg(id) {
   const c = myCards.find(x => x.id === id);
   if (!c) return;
   if (c.game_id && !canReg()) return toast('ጨዋታ በመካሄድ ላይ — ለቀጣይ ጨዋታ ካርቴላ ይግዙ', 'e');
-  const { error } = await sb.from('cards').update({ registered: !c.registered }).eq('id', id);
-  if (error) return toast('ስህተት', 'e');
+  if (!c.registered && !ensureBalForReg([c])) return;
+  const ok = await applyRegister([id], !c.registered);
+  if (!ok) return;
   await refreshMyCards(); render();
 }
 
@@ -3266,54 +3416,124 @@ function toggleSel(id) {
   renderCards();
 }
 async function regAll(v) {
-  const ids = myCards.filter(c => !c.game_id || canReg()).map(c => c.id);
+  const list = myCards.filter(c => !c.game_id || canReg());
+  const ids = list.map(c => c.id);
   if (!ids.length) return toast('ምንም ካርቴላ የለም', 'i');
-  const { error } = await sb.from('cards').update({ registered: v }).in('id', ids);
-  if (error) return toast('ስህተት', 'e');
+  if (v && !ensureBalForReg(list)) return;
+  const ok = await applyRegister(ids, v);
+  if (!ok) return;
   toast(v ? '✓ ሁሉም ተመዝግበዋል' : 'ምዝገባ ተሰርዟል');
   await refreshMyCards(); render();
 }
 async function regSelected(v) {
   if (!canReg() && myCards.some(c => selected.has(c.id) && c.game_id)) return toast('ጨዋታ በመካሄድ ላይ', 'e');
   if (!selected.size) return toast('ካርቴላ ይምረጡ', 'i');
-  const { error } = await sb.from('cards').update({ registered: v }).in('id', [...selected]);
-  if (error) return toast('ስህተት', 'e');
+  const list = myCards.filter(c => selected.has(c.id));
+  if (v && !ensureBalForReg(list)) return;
+  const ok = await applyRegister([...selected], v);
+  if (!ok) return;
   toast(v ? '✓ ተመዝግበዋል' : 'ምዝገባ ተሰርዟል');
   selected.clear(); $('selCnt').textContent = 0;
   await refreshMyCards(); render();
 }
 
+function _asNums(a) {
+  if (!a) return [];
+  if (typeof a === 'string') {
+    try { a = JSON.parse(a); } catch (e) {
+      a = a.replace(/[{}]/g, '').split(',').filter(Boolean);
+    }
+  }
+  if (!Array.isArray(a)) return [];
+  return a.map(Number).filter(n => !isNaN(n) && n > 0);
+}
+function _cacheMarks(cardId, marks) {
+  _markCache.set(Number(cardId), [...new Set(_asNums(marks))]);
+}
+function _mergedMarks(card) {
+  const id = Number(card.id);
+  const fromCard = _asNums(card.marked);
+  const fromCache = _markCache.get(id) || [];
+  return [...new Set([...fromCard, ...fromCache])];
+}
+async function _saveMarks(cardId, marks) {
+  const m = [...new Set(_asNums(marks))];
+  _cacheMarks(cardId, m);
+  // Prefer RPC (handles integer[] cleanly)
+  let { error } = await sb.rpc('set_card_marks', { p_card: String(cardId), p_marks: m, p_user: cur?.id || null });
+  if (error && /set_card_marks|Could not find|PGRST202|does not exist|42883|p_user/i.test((error.message || '') + (error.code || ''))) {
+    ({ error } = await sb.rpc('set_card_marks', { p_card: String(cardId), p_marks: m }));
+  }
+  if (error && /set_card_marks|Could not find|PGRST202|does not exist|42883/i.test((error.message || '') + (error.code || ''))) {
+    ({ error } = await sb.from('cards').update({ marked: m }).eq('id', cardId));
+  }
+  if (error) {
+    // last resort: postgres array literal as string
+    ({ error } = await sb.from('cards').update({ marked: '{' + m.join(',') + '}' }).eq('id', cardId));
+  }
+  return !error;
+}
+
 async function toggleMark(id, v) {
-  if (!['playing','claiming'].includes(game.status)) return;
+  if (!game || !['playing','claiming'].includes(game.status)) return toast('ጨዋታ አልተጀመረም', 'e');
+  v = Number(v);
+  if (!v || isNaN(v)) return;
   const c = myCards.find(x => x.id === id);
   if (!c || c.locked || c.won || !c.game_id) return;
-  const adding = !(c.marked || []).includes(v);
-  if (adding && !(game.drawn || []).includes(v)) return toast('ቁጥሩ ገና አልወጣም', 'e');
-  const targets = prefs.markAll ? myCards.filter(x => x.game_id === game.id && x.registered && !x.locked && !x.won && (x.grid || []).includes(v)) : [c];
-  await Promise.all(targets.map(t => {
-    let m = [...(t.marked || [])];
+  if (!c.registered) return toast('መጀመሪያ Register ያድርጉ', 'e');
+  const marked = _mergedMarks(c);
+  const adding = !marked.includes(v);
+  const drawn = _asNums(game.drawn);
+  if (adding && !drawn.includes(v)) return toast('ቁጥሩ ገና አልወጣም', 'e');
+  const gridHas = (card) => (card.grid || []).map(x => x === 'F' ? 'F' : Number(x)).includes(v);
+  const targets = prefs.markAll
+    ? myCards.filter(x => x.game_id === game.id && x.registered && !x.locked && !x.won && gridHas(x))
+    : [c];
+  targets.forEach(t => {
+    let m = _mergedMarks(t);
     m = adding ? (m.includes(v) ? m : [...m, v]) : m.filter(x => x !== v);
-    return sb.from('cards').update({ marked: m }).eq('id', t.id);
-  }));
-  await refreshMyCards(); renderCards();
+    t.marked = m;
+    _cacheMarks(t.id, m);
+  });
+  lastCardsSig = '';
+  renderCards();
+  await Promise.all(targets.map(t => _saveMarks(t.id, t.marked)));
 }
 
 async function resetMarks() {
   const ids = myCards.filter(c => !c.locked && !c.won).map(c => c.id);
   if (!ids.length) return toast('ምንም የለም', 'i');
-  await sb.from('cards').update({ marked: [] }).in('id', ids);
+  ids.forEach(id => _cacheMarks(id, []));
+  await Promise.all(ids.map(id => _saveMarks(id, [])));
+  myCards.forEach(c => { if (ids.includes(c.id)) c.marked = []; });
+  lastCardsSig = '';
   await refreshMyCards(); render(); closeM('mSet');
   toast('✓ ምልክቶች ጠፍተዋል');
 }
 
 async function claim(id) {
-  if (!['playing','claiming'].includes(game.status)) return toast('ጨዋታ አልተጀመረም', 'e');
+  if (!game || !['playing','claiming'].includes(game.status)) return toast('ጨዋታ አልተጀመረም', 'e');
   const c = myCards.find(x => x.id === id);
-  if (!c || !c.registered || c.locked || c.won || !c.game_id) return;
-  const { data, error } = await sb.rpc('claim_bingo', { p_card: String(id) });
-  if (error) return toast('ስህተት — እንደገና ይሞክሩ', 'e');
+  if (!c) return;
+  if (c.locked) return toast('ይህ ካርቴላ ታስሯል (Blocked)', 'e');
+  if (c.won) return toast('ይህ ካርቴላ አሸንፏል', 'i');
+  if (!c.registered) return toast('መጀመሪያ Register ያድርጉ', 'e');
+  let { data, error } = await sb.rpc('claim_bingo', { p_card: String(id), p_user: cur?.id || null });
+  if (error && /p_user|Could not find|PGRST202|42883/i.test((error.message || '') + ' ' + (error.code || ''))) {
+    ({ data, error } = await sb.rpc('claim_bingo', { p_card: String(id) }));
+  }
+  if (error) {
+    const m = error.message || '';
+    if (/NOT_LOGGED_IN/i.test(m)) return toast('እባክዎ እንደገና ይግቡ', 'e');
+    if (/CLAIM_CLOSED/i.test(m)) return toast('የቢንጎ ጊዜ አልቋል', 'e');
+    if (/NOT_PLAYING/i.test(m)) return toast('ጨዋታ አልተጀመረም', 'e');
+    if (/NOT_REGISTERED/i.test(m)) return toast('መጀመሪያ Register ያድርጉ', 'e');
+    if (isSchemaErr(error)) return toast('claim_bingo SQL ገና አልተሰራም — claim_bingo_fix.sql ያሂዱ', 'e');
+    return toast('ስህተት፦ ' + m.slice(0, 80), 'e');
+  }
   await refreshMyCards(); render();
-  if (!data.valid) { sndWrong(); return toast('❌ ውሸት ቢንጎ! ካርድ ተቆልፏል', 'e'); }
+  if (data && data.already) return toast(data.valid ? 'ይህ ካርቴላ አሸንፏል' : 'ይህ ካርቴላ ታስሯል (Blocked)', data.valid ? 'i' : 'e');
+  if (!data || !data.valid) { sndWrong(); return toast('❌ ውሸት ቢንጎ! ካርድ ተቆልፏል', 'e'); }
   sndBingo();
   toast('🏆 ቢንጎ! ሌሎች ለ30 ሰከንድ ቢንጎ ማለት ይችላሉ', 'i');
 }
@@ -3492,8 +3712,11 @@ function openHints(t) {
 async function viewCard(id) {
   const { data: c } = await sb.from('cards').select('*').eq('id', id).single();
   if (!c) return toast('ካርቴላው አልተገኘም', 'e');
-  const { data: _un } = await sb.rpc('user_names', { p_ids: [c.user_id] }); const u = (_un || [])[0];
-  const ph = u?.phone ? u.phone.slice(0, 4) + '***' + u.phone.slice(-3) : '—';
+  let phone = null;
+  try { const r = await sb.rpc('card_owner_phone', { p_card: Number(c.id) }); if (!r.error && r.data) phone = String(r.data); } catch (e) {}
+  if (!phone) { try { const { data: _un } = await sb.rpc('user_names', { p_ids: [c.user_id] }); phone = (_un || [])[0]?.phone || null; } catch (e) {} }
+  // staff see the full number; players see it partly hidden
+  const ph = phone ? (isFA() || phone.length < 8 ? phone : phone.slice(0, 4) + '***' + phone.slice(-3)) : '—';
   const drawn = game?.drawn || [], marked = c.marked || [];
   let last = null, li = -1;
   marked.forEach(v => { const k = drawn.indexOf(v); if (k > li) { li = k; last = v; } });
@@ -3515,17 +3738,71 @@ async function viewCard(id) {
   openM('mCard');
 }
 
-// ---- delete card (refund) ----
+// ---- delete card (refund if registered) ----
 function askDel(id) { delId = id; openM('mDel'); }
 async function doDel() {
   closeM('mDel');
   const c = myCards.find(x => x.id === delId);
   if (!c) return;
-  const { data, error } = await sb.rpc('delete_card', { p_card: String(c.id) });
-  if (error) return toast((error.message || '').includes('LOCKED_GAME') ? 'ጨዋታ በመካሄድ ላይ' : 'ስህተት', 'e');
-  cur.balance = Number(data.balance);
-  await refreshMyCards(); render();
-  toast('ካርቴላ ጠፍቷል — ' + fmt(data.refund) + ' ብር ተመልሷል', 'i');
+  if (c.locked || c.won) return toast('ጨዋታ በመካሄድ ላይ / ታልፏል — ማጥፋት አይቻልም', 'e');
+  let data = null, error = null;
+  ({ data, error } = await sb.rpc('delete_card', { p_card: String(c.id), p_user: cur?.id || null }));
+  if (error && /p_user|Could not find|PGRST202|does not exist|42883/i.test((error.message || '') + (error.code || ''))) {
+    ({ data, error } = await sb.rpc('delete_card', { p_card: String(c.id) }));
+  }
+  // Direct delete fallback (no refund server-side if RPC missing)
+  if (error && /Could not find|PGRST202|does not exist|42883/i.test((error.message || '') + (error.code || ''))) {
+    const { error: e2 } = await sb.from('cards').delete().eq('id', c.id).eq('user_id', cur.id);
+    if (e2) return toast('ስህተት — ካርቴላ አልጠፋም', 'e');
+    // client-side refund only if registered
+    if (c.registered) {
+      const rf = Number(c.price || 0);
+      if (rf > 0) {
+        cur.balance = Number(cur.balance || 0) + rf;
+        try { await sb.rpc('app_me'); } catch (e) {}
+      }
+      await refreshUser();
+      await refreshMyCards(); lastCardsSig = ''; render();
+      return toast('ካርቴላ ጠፍቷል' + (rf ? ' — ' + fmt(rf) + ' ብር ተመልሷል' : ''), 'i');
+    }
+    await refreshMyCards(); lastCardsSig = ''; render();
+    return toast('ካርቴላ ጠፍቷል', 'i');
+  }
+  if (error) {
+    const m = error.message || '';
+    return toast(/LOCKED/i.test(m) ? 'ጨዋታ በመካሄድ ላይ' : /NOT_FOUND/i.test(m) ? 'ካርቴላ አልተገኘም' : 'ስህተት፦ ' + m.slice(0, 60), 'e');
+  }
+  if (data?.balance != null) cur.balance = Number(data.balance);
+  await refreshMyCards(); lastCardsSig = ''; render();
+  const rf = Number(data?.refund || 0);
+  toast('ካርቴላ ጠፍቷል' + (rf ? ' — ' + fmt(rf) + ' ብር ተመልሷል' : ''), 'i');
+}
+
+async function deleteAllMyCards() {
+  const list = myCards.filter(c => !c.locked && !c.won);
+  if (!list.length) return toast('የሚጠፋ ካርቴላ የለም', 'i');
+  if (!confirm(list.length + ' ካርቴላ መጥፋት እርግጠኛ ነዎት?')) return;
+  const ids = list.map(c => c.id);
+  let data = null, error = null;
+  ({ data, error } = await sb.rpc('delete_cards', { p_ids: ids, p_user: cur?.id || null }));
+  if (error && /p_user|Could not find|PGRST202|does not exist|42883/i.test((error.message || '') + (error.code || ''))) {
+    ({ data, error } = await sb.rpc('delete_cards', { p_ids: ids }));
+  }
+  if (error && /Could not find|PGRST202|does not exist|42883/i.test((error.message || '') + (error.code || ''))) {
+    let ok = 0, refund = 0;
+    for (const c of list) {
+      const { error: e2 } = await sb.from('cards').delete().eq('id', c.id).eq('user_id', cur.id);
+      if (!e2) { ok++; if (c.registered) refund += Number(c.price || 0); }
+    }
+    if (refund > 0) await refreshUser();
+    await refreshMyCards(); lastCardsSig = ''; render();
+    return toast(ok ? (ok + ' ካርቴላ ጠፍቷል') : 'ስህተት — አልጠፋም', ok ? 'i' : 'e');
+  }
+  if (error) return toast('ስህተት — ሁሉንም ማጥፋት አልተሳካም', 'e');
+  if (data?.balance != null) cur.balance = Number(data.balance);
+  await refreshMyCards(); lastCardsSig = ''; render();
+  const rf = Number(data?.refund || 0);
+  toast((data?.deleted || ids.length) + ' ካርቴላ ጠፍቷል' + (rf ? ' — ' + fmt(rf) + ' ብር ተመልሷል' : ''), 'i');
 }
 
 // ===================== GAME CONTROL =====================
@@ -3907,6 +4184,34 @@ async function loadGame() {
     game = g;
   } else game = data[0];
 }
+let _refreshing = false;
+async function doRefresh() {
+  if (_refreshing || !cur) return;
+  _refreshing = true;
+  const btn = $('hRef');
+  if (btn) btn.classList.add('spin');
+  try {
+    lastBoardKey = '';
+    lastStripKey = '';
+    lastCardsSig = '';
+    await Promise.all([
+      loadSettings().catch(() => {}),
+      refreshUser().catch(() => {}),
+      syncGame(true)
+    ]);
+    if (page === 'wallet') await renderMyTx().catch(() => {});
+    if (page === 'admin' && isFA()) await renderFin(true).catch(() => {});
+    if (page === 'owner') await renderOwner(true).catch(() => {});
+    if (page === 'profile') renderProfile();
+    toast('✓ ተሻሽሏል', 'i');
+  } catch (e) {
+    toast('ሪፍሬሽ አልተሳካም', 'e');
+  } finally {
+    if (btn) btn.classList.remove('spin');
+    _refreshing = false;
+  }
+}
+
 async function syncGame(full = true) {
   if (syncing) { syncAgain = true; return; }
   syncing = true;
@@ -3915,7 +4220,10 @@ async function syncGame(full = true) {
     await loadGame();
     const same = prev && prev.id === game.id;
     if (prev && !same) { selected.clear(); await refreshMyCards(); }
-    if (same && (game.drawn || []).length > prevLen) { sndBall(); speakBall((game.drawn || []).at(-1)); }
+    if (same && (game.drawn || []).length > prevLen) {
+      const _b = (game.drawn || []).at(-1), _k = game.id + ':' + (game.drawn || []).length + ':' + _b;
+      if (window._lastAnnounced !== _k) { window._lastAnnounced = _k; sndBall(); speakBall(_b); }
+    }
     if (same && prevSt !== game.status) {
       if (game.status === 'claiming') sndBingo();
       if (game.status === 'playing' && prefs.gs !== 'off' && (prefs.gs === 'always' || myCards.some(c => c.registered)))
@@ -3953,15 +4261,24 @@ function updCountdown0() {
 
 async function autoMarkNow() {
   if (!prefs.autoMark || !game || !['playing','claiming'].includes(game.status)) return;
-  const drawn = new Set(game.drawn || []);
-  const jobs = myCards.filter(c => c.game_id === game.id && c.registered && !c.locked && !c.won).map(c => {
-    const have = new Set(c.marked || []);
-    const add = (c.grid || []).filter(v => v !== 'F' && drawn.has(v) && !have.has(v));
-    return add.length ? sb.from('cards').update({ marked: [...have, ...add] }).eq('id', c.id) : null;
-  }).filter(Boolean);
+  const drawn = new Set(_asNums(game.drawn));
+  if (!drawn.size) return;
+  let changed = false;
+  const jobs = [];
+  for (const c of myCards) {
+    if (c.game_id !== game.id || !c.registered || c.locked || c.won) continue;
+    const have = new Set(_mergedMarks(c));
+    const add = (c.grid || []).map(v => v === 'F' ? 'F' : Number(v)).filter(v => v !== 'F' && drawn.has(v) && !have.has(v));
+    if (!add.length) continue;
+    const next = [...have, ...add];
+    c.marked = next;
+    _cacheMarks(c.id, next);
+    changed = true;
+    jobs.push(_saveMarks(c.id, next));
+  }
   if (!jobs.length) return;
   await Promise.all(jobs);
-  await refreshMyCards();
+  if (changed) { lastCardsSig = ''; renderCards(); }
 }
 
 function updCountdown() {
@@ -3981,9 +4298,61 @@ function updCountdown() {
 
 async function refreshMyCards() {
   if (!cur) return;
-  if (!game) { myCards = []; return; }
-  const { data } = await sb.from('cards').select('*').eq('user_id', cur.id).or('game_id.eq.' + game.id + ',game_id.is.null').order('id', { ascending: false });
-  myCards = data || [];
+  let q = sb.from('cards').select('*').eq('user_id', cur.id);
+  if (game && game.id) {
+    q = q.or('game_id.eq.' + game.id + ',game_id.is.null');
+  } else {
+    q = q.is('game_id', null);
+  }
+  const { data, error } = await q.order('id', { ascending: false });
+  if (error) {
+    // fallback: all cards for user (RLS may still filter)
+    const r2 = await sb.from('cards').select('*').eq('user_id', cur.id).order('id', { ascending: false });
+    myCards = r2.data || [];
+  } else {
+    myCards = data || [];
+  }
+  // normalize grid/marked to number[] + 'F'; fix legacy column-major grids
+  myCards = myCards.map(c => {
+    let g = c.grid;
+    if (typeof g === 'string') { try { g = JSON.parse(g); } catch(e) {} }
+    if (g && typeof g === 'object' && !Array.isArray(g)) g = Object.values(g);
+    if (!Array.isArray(g)) g = [];
+    g = g.map(v => (v === 'F' || v === 'f' || v === 0 || v === '0') ? 'F' : Number(v));
+    // Detect column-major (B col has numbers >15) and transpose to row-major
+    if (g.length === 25) {
+      const bCol = [g[0], g[1], g[2], g[3], g[4]].filter(x => x !== 'F');
+      // if first 5 look like a full B column packed (all 1-15) but positions 1-4 should be I/N/G/O under row-major
+      // Column-major stores B0..B4 at indices 0..4 — all should be 1-15
+      const looksColMajor = g.slice(0, 5).every(x => x === 'F' || (x >= 1 && x <= 15))
+        && g.slice(5, 10).every(x => x === 'F' || (x >= 16 && x <= 30))
+        && !(g[1] >= 16 && g[1] <= 30); // index 1 is I1 in row-major
+      // Actually simpler: in row-major index 5 is B2 (1-15). In col-major index 5 is I1 (16-30).
+      if (g[5] !== 'F' && Number(g[5]) >= 16 && Number(g[5]) <= 30) {
+        const src = g.slice();
+        const out = new Array(25);
+        for (let col = 0; col < 5; col++)
+          for (let row = 0; row < 5; row++)
+            out[row * 5 + col] = src[col * 5 + row];
+        g = out;
+      }
+    }
+    let m = c.marked;
+    if (typeof m === 'string') { try { m = JSON.parse(m); } catch(e) { m = []; } }
+    if (!Array.isArray(m)) m = [];
+    m = m.map(Number).filter(n => !isNaN(n));
+    return { ...c, grid: g, marked: m };
+  });
+  // Keep marks during the same live game (refresh / realtime must not erase them)
+  if (game && _markGameId !== game.id) {
+    _markCache.clear();
+    _markGameId = game.id;
+  }
+  myCards = myCards.map(c => {
+    const merged = _mergedMarks(c);
+    if (merged.length) _cacheMarks(c.id, merged);
+    return { ...c, marked: merged };
+  });
 }
 async function refreshGameCards() {
   if (!game) return;
@@ -4012,7 +4381,7 @@ function render() {
   $('fabHint').textContent = fmt(canEdit() ? gamePrice() : nextPrice()) + ' ብር/ካርድ';
 
   const drawn = game?.drawn || [];
-  $('tCount').textContent = drawn.length;
+  $('tCount').textContent = drawn.length + '/75';
   const last = drawn.at(-1), b = $('tBall');
   if (last) { b.className = 'ball ' + letter(last); b.textContent = letter(last) + '-' + last; b.style.display = ''; }
   else b.style.display = 'none';
@@ -4027,7 +4396,7 @@ function render() {
   $('giStatus').className = ['waiting','ready','preparing'].includes(game?.status) ? 'text-blue-400' : ['playing','claiming'].includes(game?.status) ? 'text-emerald-400' : 'text-slate-400';
   $('giType').textContent = GT[game?.type] || GT.line;
   $('giPrice').textContent = '$' + fmt(gamePrice());
-  $('giPlayers').textContent = new Set(reg.map(c => c.user_id)).size;
+  $('giPlayers').textContent = new Set(reg.filter(c => c.user_id != null).map(c => c.user_id)).size; // unique players (users), not cards
   $('giPrize').textContent = '$' + fmt(prize);
   if (isGA()) updAdminLive(reg, pool, prize);
   $('tBingo').innerHTML = chips(gameCards.filter(c => c.won), 'gr');
@@ -4078,10 +4447,11 @@ function renderStrip() {
   const d = game?.drawn || [], last = d.at(-1), key = d.length + ':' + (last || 0) + ':' + (game?.id || 0);
   if (key === lastStripKey) return;
   lastStripKey = key;
-  $('stripCnt').textContent = d.length;
+  $('stripCnt').textContent = d.length + '/75';
   if (!d.length) { el.innerHTML = '<span class="text-slate-500 text-sm">ገና ኳስ አልወጣም</span>'; return; }
+  // Newest first; first ball larger with letter (like sample G-50)
   el.innerHTML = [...d].reverse().map((n, i) => i === 0
-    ? `<span class="sball big ${letter(n)}">${letter(n)}-${n}</span>`
+    ? `<span class="sball big ${letter(n)}"><small style="font-size:10px;opacity:.9;display:block;line-height:1">${letter(n)}</small>${n}</span>`
     : `<span class="sball ${letter(n)}">${n}</span>`).join('');
 }
 
@@ -4089,11 +4459,12 @@ function buildBoard() {
   const _dr = game?.drawn || [], _key = _dr.length + ':' + (_dr.at(-1) || 0);
   if (_key === lastBoardKey) return;
   lastBoardKey = _key;
-  const col = {B:'#3b82f6',I:'#ef4444',N:'#22c55e',G:'#8b5cf6',O:'#f97316'};
+  // bingo1020-style letter colors
+  const col = {B:'#16a34a',I:'#0ea5e9',N:'#6366f1',G:'#e11d75',O:'#ea580c'};
   const drawn = game?.drawn || [], last = drawn.at(-1);
   let h = '';
   [['B',1],['I',16],['N',31],['G',46],['O',61]].forEach(([L,s]) => {
-    h += `<div class="brow"><b style="color:${col[L]};border-color:${col[L]};background:#222">${L}</b>`;
+    h += `<div class="brow"><b style="background:${col[L]}">${L}</b>`;
     for (let n = s; n < s + 15; n++) h += `<span class="num ${drawn.includes(n)?'d-'+L:''} ${n===last?'last':''}">${n}</span>`;
     h += '</div>';
   });
@@ -4130,8 +4501,16 @@ function renderCards() {
     else b = c.registered
       ? `<button onclick="toggleReg(${c.id})" class="tag t-ok">✓ ተመዝግቧል</button>`
       : `<button onclick="toggleReg(${c.id})" class="tag t-reg">ካርቴላ መመዝገብ</button>`;
-    const cells = (c.grid || []).map(v => v === 'F' ? '<div class="cell fr">ነፃ</div>'
-      : `<button class="cell ${(c.marked||[]).includes(v)?'mk':((!nx && (game?.drawn||[]).includes(v))?'called':'')}" ${live && !nx && !c.locked && !c.won ? `onclick="toggleMark(${c.id},${v})"` : ''}>${v}</button>`).join('');
+    const mkSet = new Set((c.marked || []).map(Number));
+    const drSet = new Set((game?.drawn || []).map(Number));
+    const canMark = live && !nx && !c.locked && !c.won && c.registered;
+    const cells = (c.grid || []).map(v => {
+      if (v === 'F' || v === 'f') return '<div class="cell fr">ነፃ</div>';
+      const n = Number(v);
+      const isMk = mkSet.has(n);
+      const isCalled = !nx && drSet.has(n);
+      return `<button type="button" class="cell ${isMk?'mk':(isCalled?'called':'')}" ${canMark ? `onclick="toggleMark(${c.id},${n})"` : ''}>${n}</button>`;
+    }).join('');
     return `<div class="pc ${c.won?'win':''} ${c.locked?'lock':''} ${selected.has(c.id)?'sel':''}">
       <div class="ph" ${selMode ? `onclick="toggleSel(${c.id})"` : ''}><span class="flex items-center gap-2">${selMode ? (selected.has(c.id)?'☑':'☐') : 'ካርድ'} ${c.id} ${nx ? '<span class="chip !px-2 !py-0.5 !text-[11px]" style="background:#2563eb">ለቀጣይ</span>' : `<span class="chip am !px-2 !py-0.5 !text-[12px]">R-${remaining(c)}</span>`}</span>${(!selMode && (nx || canEdit())) ? `<button onclick="askDel(${c.id})" class="text-white/90 text-lg leading-none">✕</button>` : ''}</div>
       <div class="text-center py-1.5">${b}</div>
@@ -4769,8 +5148,19 @@ function buildFab() {
 }
 function toggleFab() {
   fabOpen = !fabOpen;
-  $('fabMenu').classList.toggle('hidden', !fabOpen);
-  $('fabMenu').classList.toggle('flex', fabOpen);
+  const m = $('fabMenu');
+  if (!m) return;
+  m.classList.toggle('hidden', !fabOpen);
+  m.classList.toggle('flex', fabOpen);
+  if (fabOpen) {
+    m.style.display = 'flex';
+    m.style.flexDirection = 'column';
+    m.style.alignItems = 'flex-end';
+    m.style.gap = '6px';
+    m.style.zIndex = '61';
+  } else {
+    m.style.display = 'none';
+  }
 }
 
 // ===================== REALTIME =====================
