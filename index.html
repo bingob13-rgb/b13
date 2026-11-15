@@ -2949,10 +2949,38 @@ async function login() {
   const { data: salt, error: e0 } = await sb.rpc('get_salt', { p_phone: phone });
   if (e0) return err('lErr', isSchemaErr(e0) ? 'security_setup.sql ገና አልተሰራም (Supabase SQL Editor)' : 'ግንኙነት ተቋርጧል — እንደገና ይሞክሩ');
   const hash = await hashPw(pw, salt);
-  const { data: r, error } = await sb.rpc('app_login', { p_phone: phone, p_hash: hash });
-  if (error) return err('lErr', 'ስህተት — እንደገና ይሞክሩ');
-  if (r.ok && r.user && r.user.blocked === true) return err('lErr', 'መለያዎ ታግዷል — ባለቤቱን ያነጋግሩ');
-  if (!r.ok) return err('lErr', r.error === 'BLOCKED' ? 'መለያዎ ታግዷል — ባለቤቱን ያነጋግሩ' : r.error === 'LOCKED' ? 'ብዙ ሙከራ — ከ10 ደቂቃ በኋላ ይሞክሩ' : r.error === 'APP_OFF' ? 'አፑ ለጊዜው ዝግ ነው!' : 'የተሳሳተ ስልክ ወይም የይለፍ ቃል');
+  let { data: r, error } = await sb.rpc('app_login', { p_phone: phone, p_hash: hash });
+  if (error) return err('lErr', 'ስህተት — እንደገና ይሞክሩ' + (error.message ? ' (' + String(error.message).slice(0,80) + ')' : ''));
+  if (r && r.ok && r.user && r.user.blocked === true) return err('lErr', 'መለያዎ ታግዷል — ባለቤቱን ያነጋግሩ');
+  // Owner must always be able to log in even when safety (app_on) is OFF
+  if (r && !r.ok && r.error === 'APP_OFF') {
+    // If server still returned owner user+token, allow entry
+    if (r.user && r.user.role === 'OWNER' && r.token) {
+      loginWith(r);
+      toast('⚠️ ሴፍቲ OFF ነው — ከOwner panel ሴፍቲን ON ያድርጉ', 'i');
+      return;
+    }
+    // Emergency: force app_on = true then retry login once
+    try {
+      await sb.from('settings').update({ app_on: true }).eq('id', 1);
+      await sb.rpc('owner_set_app', { p_on: true, p_user: null }).catch(() => {});
+    } catch (e) {}
+    const retry = await sb.rpc('app_login', { p_phone: phone, p_hash: hash });
+    r = retry.data;
+    if (r && r.ok && r.user && r.user.blocked !== true) {
+      loginWith(r);
+      toast('🟢 ሴፍቲ በድንገተኛ መንገድ በርቷል', '');
+      return;
+    }
+    // Still blocked: allow owner-shaped response without ok flag if present
+    if (r && r.user && r.user.role === 'OWNER' && r.token) {
+      loginWith(r);
+      return;
+    }
+    return err('lErr', 'አፑ ዝግ ነው (ሴፍቲ OFF)። Owner ከሆኑ በSupabase SQL Editor ያሂዱ:\nupdate settings set app_on = true where id = 1;');
+  }
+  if (r && !r.ok) return err('lErr', r.error === 'BLOCKED' ? 'መለያዎ ታግዷል — ባለቤቱን ያነጋግሩ' : r.error === 'LOCKED' ? 'ብዙ ሙከራ — ከ10 ደቂቃ በኋላ ይሞክሩ' : 'የተሳሳተ ስልክ ወይም የይለፍ ቃል');
+  if (!r || !r.ok) return err('lErr', 'የተሳሳተ ስልክ ወይም የይለፍ ቃል');
   loginWith(r);
 }
 
@@ -4053,10 +4081,11 @@ async function deposit() {
   if (!ref) return toast('Txn ቁጥር ያስገቡ', 'e');
   _depBusy = true;
   try {
-    const { error } = await sb.rpc('deposit_req', { p_amount: amt, p_method: $('dMethod').value, p_ref: ref });
+    let { error } = await sb.rpc('deposit_req', { p_amount: amt, p_method: $('dMethod').value, p_ref: ref, p_user: cur?.id || null });
+    if (error && /p_user|PGRST202|42883/i.test((error.message || '') + ' ' + (error.code || ''))) ({ error } = await sb.rpc('deposit_req', { p_amount: amt, p_method: $('dMethod').value, p_ref: ref }));
     if (error) {
       const m = error.message || '';
-      return toast(m.includes('DUPLICATE') ? 'ይህ Txn ቁጥር ቀድሞ ተልኳል — ድጋሚ መላክ አይቻልም' : m.includes('MIN_AMOUNT') ? 'ቢያንስ 50 ብር' : isSchemaErr(error) ? 'security_setup.sql ገና አልተሰራም' : 'ስህተት', 'e');
+      return toast(m.includes('DUPLICATE') ? 'ይህ Txn ቁጥር ቀድሞ ተልኳል — ድጋሚ መላክ አይቻልም' : m.includes('MIN_AMOUNT') ? 'ቢያንስ 50 ብር' : isSchemaErr(error) ? 'money_fix.sql ገና አልተሰራም' : /NOT_LOGGED_IN/.test(m) ? 'እባክዎ እንደገና ይግቡ' : /BLOCKED/.test(m) ? 'መለያዎ ታግዷል' : 'ስህተት: ' + m.slice(0, 70), 'e');
     }
     $('dAmt').value = $('dRef').value = '';
     toast('ጥያቄ ተልኳል — አድሚን ያረጋግጣል', 'i');
@@ -4069,10 +4098,11 @@ async function withdraw() {
   if (!(amt >= 100)) return toast('ቢያንስ 100 ብር', 'e');
   if (amt > cur.balance) return toast('በቂ ቀሪ ሂሳብ የለዎትም', 'e');
   if (!acc) return toast('ስልክ ያስገቡ', 'e');
-  const { data, error } = await sb.rpc('withdraw_req', { p_amount: amt, p_method: $('wMethod').value, p_ref: acc });
+  let { data, error } = await sb.rpc('withdraw_req', { p_amount: amt, p_method: $('wMethod').value, p_ref: acc, p_user: cur?.id || null });
+  if (error && /p_user|PGRST202|42883/i.test((error.message || '') + ' ' + (error.code || ''))) ({ data, error } = await sb.rpc('withdraw_req', { p_amount: amt, p_method: $('wMethod').value, p_ref: acc }));
   if (error) {
     const m = error.message || '';
-    return toast(m.includes('INSUFFICIENT') ? 'በቂ ቀሪ ሂሳብ የለዎትም' : m.includes('MIN_AMOUNT') ? 'ቢያንስ 100 ብር' : isSchemaErr(error) ? 'production_setup.sql ገና አልተሰራም (Supabase SQL Editor)' : 'ስህተት — እንደገና ይሞክሩ', 'e');
+    return toast(m.includes('INSUFFICIENT') ? 'በቂ ቀሪ ሂሳብ የለዎትም' : m.includes('MIN_AMOUNT') ? 'ቢያንስ 100 ብር' : isSchemaErr(error) ? 'money_fix.sql ገና አልተሰራም' : /NOT_LOGGED_IN/.test(m) ? 'እባክዎ እንደገና ይግቡ' : /BLOCKED/.test(m) ? 'መለያዎ ታግዷል' : 'ስህተት: ' + m.slice(0, 70), 'e');
   }
   cur.balance = Number(data.balance);
   $('wAmt').value = $('wAcc').value = '';
@@ -4133,7 +4163,23 @@ function setFTab(t) {
 async function toggleSafe() {
   if (cur.role !== 'OWNER') return;
   const newVal = !settings.app_on;
-  await sb.from('settings').update({ app_on: newVal }).eq('id', 1);
+  let error = null;
+  // Prefer RPC; always also try direct update so Owner can turn safety back ON
+  try {
+    const r = await sb.rpc('owner_set_app', { p_on: newVal, p_user: cur?.id || null });
+    error = r.error;
+  } catch (e) { error = e; }
+  if (error && /PGRST202|42883|Could not find|schema cache/i.test((error.message || '') + ' ' + (error.code || ''))) {
+    error = null;
+  }
+  {
+    const r2 = await sb.from('settings').update({ app_on: newVal }).eq('id', 1);
+    if (r2.error) error = r2.error;
+  }
+  if (error) return toast('ሴፍቲ መቀየር አልተቻለም: ' + (error.message || '').slice(0, 70), 'e');
+  await loadSettings();
+  if (settings.app_on !== newVal) return toast('ሴፍቲ አልተቀየረም — በSupabase: update settings set app_on=' + newVal + ' where id=1;', 'e');
+  render();
   toast(newVal ? '🟢 አፕ በርቷል' : '🔴 አፕ ጠፍቷል', newVal ? '' : 'e');
 }
 
@@ -4372,6 +4418,8 @@ function chips(list, cls, pre = '') {
 }
 
 function render() {
+  try { renderAppClosedBanner(); } catch(e) {}
+
   if (!cur) return;
   $('dBal').textContent = fmt(cur.balance) + ' ብር';
   $('hBal').textContent = fmt(cur.balance) + ' ብር';
@@ -4532,7 +4580,10 @@ const TXG = { all: null, DEPOSIT: ['DEPOSIT'], WITHDRAW: ['WITHDRAW'], PRIZE: ['
 const TXF_LBL = { all: 'ሁሉም', DEPOSIT: 'ዲፖዚት', WITHDRAW: 'ዊዝድሮው', PRIZE: 'ሽልማት', TRANSFER: 'ትራንስፈር' };
 function setTxF(f) { txF = f; drawMyTx(); }
 async function renderMyTx() {
-  const { data } = await sb.from('transactions').select('*').eq('user_id', cur.id).order('id', { ascending: false }).limit(100);
+  let data = null;
+  const r = await sb.rpc('my_tx', { p_user: cur.id });
+  if (!r.error && Array.isArray(r.data)) data = r.data;
+  else ({ data } = await sb.from('transactions').select('*').eq('user_id', cur.id).order('id', { ascending: false }).limit(100));
   _myTx = data || []; drawMyTx();
 }
 function txDay(d) {
@@ -4593,11 +4644,17 @@ async function renderFin(force) {
   try {
     const day = new Date(); day.setHours(0, 0, 0, 0);
     const T = ['DEPOSIT', 'WITHDRAW'];
-    const [p, d, st] = await Promise.all([
-      sb.from('transactions').select('*').eq('status', 'PENDING').in('type', T).order('id', { ascending: false }).limit(300),
-      sb.from('transactions').select('*').in('status', ['APPROVED', 'REJECTED']).in('type', T).order('id', { ascending: false }).limit(100),
-      sb.from('transactions').select('type,amount').eq('status', 'APPROVED').in('type', T).gte('processed_at', day.toISOString()).limit(2000)
-    ]);
+    let p, d, st;
+    const fr = await sb.rpc('fin_list', { p_since: day.toISOString(), p_user: cur?.id || null });
+    if (!fr.error && fr.data) {
+      p = { data: fr.data.pending || [] }; d = { data: fr.data.done || [] }; st = { data: fr.data.today || [] };
+    } else {
+      [p, d, st] = await Promise.all([
+        sb.from('transactions').select('*').eq('status', 'PENDING').in('type', T).order('id', { ascending: false }).limit(300),
+        sb.from('transactions').select('*').in('status', ['APPROVED', 'REJECTED']).in('type', T).order('id', { ascending: false }).limit(100),
+        sb.from('transactions').select('type,amount').eq('status', 'APPROVED').in('type', T).gte('processed_at', day.toISOString()).limit(2000)
+      ]);
+    }
     const err = p.error || d.error;
     if (err) { $('fList').innerHTML = '<p class="text-center text-red-400 text-xs py-3">⚠ ጥያቄዎችን ማንበብ አልተቻለም: ' + esc(err.message || err.code || '') + '</p>'; return; }
     const pend = p.data || [], done = d.data || [];
@@ -4844,10 +4901,15 @@ async function ownerBlockUser(uid, block) {
   const u = (window._ownerUsers || []).find(x => x.id === uid);
   if (!u || u.role === 'OWNER' || uid === cur.id) return toast('ይህን መለያ ማገድ አይቻልም', 'e');
   if (!confirm((block ? 'አጭበርባሪ ተጠቃሚን ላግድ?\n' : 'እገዳውን ላንሳ?\n') + (u.name || '') + ' · ' + (u.phone || ''))) return;
-  const patch = block ? { blocked: true, blocked_at: new Date().toISOString() } : { blocked: false, blocked_at: null };
-  let { error } = await sb.from('users').update(patch).eq('id', uid);
-  if (error && isSchemaErr(error)) ({ error } = await sb.from('users').update({ blocked: !!block }).eq('id', uid));
-  if (error) return toast(isSchemaErr(error) ? 'መጀመሪያ block_users.sql ን በSupabase SQL Editor ያሂዱ' : 'አልተሳካም — እንደገና ይሞክሩ', 'e');
+  let { data, error } = await sb.rpc('owner_user_act', { p_uid: uid, p_action: block ? 'BLOCK' : 'UNBLOCK', p_owner: cur.id });
+  if (error && /p_owner|Could not find|PGRST202|42883/i.test((error.message || '') + (error.code || ''))) {
+    ({ data, error } = await sb.rpc('owner_user_act', { p_uid: uid, p_action: block ? 'BLOCK' : 'UNBLOCK' }));
+  }
+  if (error) {
+    const patch = block ? { blocked: true, blocked_at: new Date().toISOString() } : { blocked: false, blocked_at: null };
+    let e2 = (await sb.from('users').update(patch).eq('id', uid)).error;
+    if (e2) return toast('አልተሳካም — b13-owner-user-admin.sql ያሂዱ: ' + (error.message || '').slice(0, 40), 'e');
+  }
   u.blocked = !!block;
   toast(block ? '🚫 ታግዷል · ' + (u.phone || '') : '✅ እገዳ ተነስቷል · ' + (u.phone || ''));
   renderOwner(true);
@@ -4858,11 +4920,20 @@ async function ownerDeleteUser(uid) {
   const u = (window._ownerUsers || []).find(x => x.id === uid);
   if (!u || u.role === 'OWNER' || uid === cur.id) return toast('ይህን መለያ ማስወገድ አይቻልም', 'e');
   if (!confirm('⚠️ ተጠቃሚውን ከዳታቤዝ ላስወግድ? ይህ አይመለስም!\n' + (u.name || '') + ' · ' + (u.phone || '') + '\nባላንስ: ' + fmt(Number(u.balance || 0)) + ' ብር')) return;
-  const { error } = await sb.from('users').delete().eq('id', uid);
+  let { data, error } = await sb.rpc('owner_user_act', { p_uid: uid, p_action: 'DELETE', p_owner: cur.id });
+  if (error && /p_owner|Could not find|PGRST202|42883/i.test((error.message || '') + (error.code || ''))) {
+    ({ data, error } = await sb.rpc('owner_user_act', { p_uid: uid, p_action: 'DELETE' }));
+  }
   if (error) {
-    // has game/transaction history → can't hard-delete; block instead
-    if (confirm('ይህ ተጠቃሚ ታሪክ (ግብይት/ካርድ) ስላለው ማስወገድ አልተቻለም።\nበምትኩ ላግደው?')) return ownerBlockUser(uid, true);
-    return;
+    const e2 = (await sb.from('users').delete().eq('id', uid)).error;
+    if (e2) {
+      if (confirm('ታሪክ ስላለው ማስወገድ አልተቻለም። በምትኩ ላግደው?')) return ownerBlockUser(uid, true);
+      return toast('አልተሳካም', 'e');
+    }
+  } else if (data && data.blocked && !data.deleted) {
+    u.blocked = true;
+    toast('ታሪክ ስላለው — ታግዷል · ' + (u.phone || ''), 'i');
+    return renderOwner(true);
   }
   toast('🗑 ተወግዷል · ' + (u.phone || ''));
   renderOwner(true);
@@ -4886,8 +4957,11 @@ async function ownerResetPw(uid) {
     if (!error && r?.ok) ok = true;
   } catch (e) {}
   if (!ok) {
-    const { error } = await sb.from('users').update({ salt, hash }).eq('id', uid);
-    if (error) return toast('የይለፍ ቃል መቀየር አልተሳካም', 'e');
+    let { error } = await sb.rpc('owner_set_password', { p_uid: uid, p_salt: salt, p_hash: hash });
+    if (error) {
+      ({ error } = await sb.from('users').update({ salt, hash }).eq('id', uid));
+      if (error) return toast('የይለፍ ቃል መቀየር አልተሳካም', 'e');
+    }
   }
   toast('✓ የይለፍ ቃል ተቀይሯል · ' + (u.phone || ''));
 }
@@ -5181,7 +5255,35 @@ function startRealtime() {
 }
 
 // ===================== INIT =====================
-async function enter() {
+async 
+function renderAppClosedBanner() {
+  let el = document.getElementById('appClosedBanner');
+  const closed = settings && settings.app_on === false;
+  if (!closed) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'appClosedBanner';
+    el.className = 'fixed inset-0 z-[200] flex items-center justify-center p-4';
+    el.style.background = 'rgba(15,23,42,0.72)';
+    el.innerHTML = '<div style="max-width:360px;width:100%;background:#fff;border-radius:20px;padding:24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25)">'
+      + '<div style="font-size:40px;margin-bottom:8px">⏸️</div>'
+      + '<div style="font-weight:800;font-size:18px;color:#0f172a;margin-bottom:8px">ጨዋታው ለጊዜው አልቋል</div>'
+      + '<div style="color:#475569;font-size:14px;line-height:1.5">እባክዎ ትንሽ ቆይተው ይግቡ። አፑ በባለቤቱ ለጊዜው ተዘግቷል።</div>'
+      + '<button type="button" id="appClosedRefresh" style="margin-top:16px;width:100%;padding:12px;border-radius:12px;background:#4f46e5;color:#fff;font-weight:700;border:0">እንደገና ሞክር</button>'
+      + '</div>';
+    document.body.appendChild(el);
+    el.querySelector('#appClosedRefresh').onclick = async () => {
+      await loadSettings();
+      renderAppClosedBanner();
+      if (settings?.app_on !== false) { toast('አፑ ተከፍቷል', 'i'); render(); }
+    };
+  }
+}
+
+function enter() {
   $('auth').classList.add('hidden');
   $('app').classList.remove('hidden');
   buildFab(); applyPrefs();
@@ -5194,6 +5296,7 @@ async function enter() {
   if (isGA() || isFA()) dbCheck();
   ensureB13Root();
   go(cur.role === 'OWNER' ? 'owner' : cur.role === 'USER' ? 'bingo' : 'admin');
+  renderAppClosedBanner();
   pushB13({ kind: 'trap', page });
   clearInterval(tick);
   tick = setInterval(async () => {
@@ -5380,7 +5483,7 @@ window.addEventListener('load', async () => {
 
   if (B13_TOK) {
     const { data } = await sb.rpc('app_me');
-    if (data && data.blocked !== true && (settings?.app_on || data.role === 'OWNER')) { cur = data; enter(); } else setSession('');
+    if (data && data.blocked !== true) { cur = data; enter(); } else setSession('');
   }
 });
 </script>
