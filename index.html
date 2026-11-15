@@ -1461,6 +1461,42 @@ html:not(.light) .dacc b{color:#c7d2fe}html:not(.light) .dacc small{color:#9aa6c
     animation: none !important;
   }
 }
+
+/* B13 button loading spinner */
+@keyframes b13spin { to { transform: rotate(360deg); } }
+.b13-spin {
+  display: inline-block;
+  width: 1em; height: 1em;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: b13spin .7s linear infinite;
+  vertical-align: -0.15em;
+  margin-right: .4em;
+}
+.btn.loading, button.loading, .b-p.loading, .b-ok.loading, .b-bad.loading {
+  opacity: 0.92 !important;
+  pointer-events: none !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: .25rem;
+}
+button.loading .b13-spin, .btn.loading .b13-spin {
+  border-color: rgba(255,255,255,.3);
+  border-top-color: #fff;
+}
+button.b-bad.loading .b13-spin, .btn.b-bad.loading .b13-spin {
+  border-color: rgba(255,255,255,.3);
+  border-top-color: #fff;
+}
+
+
+#b13Busy{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(15,23,42,.35);backdrop-filter:blur(2px)}
+.b13-busy-box{background:#0f172a;color:#fff;padding:16px 22px;border-radius:14px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+@keyframes b13spin{to{transform:rotate(360deg)}}
+.b13-spin{display:inline-block;width:1em;height:1em;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:b13spin .7s linear infinite;vertical-align:-.15em;margin-right:.4em}
+.btn.loading,button.loading{opacity:.92!important;pointer-events:none!important;display:inline-flex!important;align-items:center;justify-content:center;gap:.25rem}
 </style>
 <meta name="description" content="B13 Bingo — በአማርኛ የሚጫወቱት ቢንጎ። ካርቴላ ይግዙ፣ ይጫወቱ፣ ያሸንፉ። ቴሌብር ዲፖዚት · በስልክዎ ይጫኑ።">
 <meta name="keywords" content="B13 Bingo, ቢንጎ, Amharic Bingo, online bingo, Ethiopia bingo, ካርቴላ">
@@ -1527,8 +1563,19 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
 })();
 </script>
 </head>
+<script>
+/* B13_KILL_SPLASH */
+(function(){
+  function kill(){ var x=document.getElementById('splash'); if(x){ try{x.remove();}catch(e){x.style.display='none';} } }
+  setTimeout(kill, 800);
+  setTimeout(kill, 2000);
+  setTimeout(kill, 4000);
+  window.addEventListener('load', function(){ setTimeout(kill, 500); });
+})();
+</script>
 <body>
 
+<script>window.b13_splash_failsafe=setTimeout(function(){var x=document.getElementById("splash");if(x)x.remove();},2500);</script>
 <div id="splash" class="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden">
   <i class="sp-orb o1"></i><i class="sp-orb o2"></i>
   <div class="sp-logo"><div class="sp-disc"><small>B</small><b>13</b></div></div>
@@ -1558,7 +1605,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
       <div class="relative"><input id="lPass" class="inp pr-12" type="password"><button type="button" onclick="eye('lPass',this)" class="absolute right-4 top-5 text-lg">👁</button></div>
       <div id="lErr" class="hidden text-red-500 text-xs text-center bg-red-500/10 rounded-lg py-2"></div>
       <button onclick="authPanel('f')" class="auth-forgot">የይለፍ ቃል ረሱት?</button>
-      <button class="btn b-p" id="btnLogin">ይግቡ</button>
+      <button class="btn b-p" id="btnLogin" onclick="login()">ይግቡ</button>
       <div class="auth-dl inst">
         <div>
           <b>በስልክዎ መጫወት<br>ከመረጡ</b>
@@ -1576,7 +1623,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
       <div class="relative"><input id="sPass2" class="inp pr-12" type="password" placeholder="የይለፍ ቃል ድገም"><button type="button" onclick="eye('sPass2',this)" class="absolute right-3 top-3 text-lg">👁</button></div>
       <label class="flex items-start gap-2 text-[12px] leading-snug" style="color:#3a4a66"><input id="sAge" type="checkbox" class="mt-1 shrink-0 accent-[#1d5bdc]"><span><b style="color:#0b1226">ዕድሜዬ 18 ዓመት እና ከዚያ በላይ ነው</b>፤ የአጠቃቀም ደንቦችን እቀበላለሁ። ጨዋታ ገንዘብ ማጣትን ሊያስከትል ይችላል — ባለዎት አቅም ብቻ ይጫወቱ።</span></label>
       <div id="sErr" class="hidden text-red-400 text-xs text-center bg-red-500/10 rounded-lg py-2"></div>
-      <button class="btn b-p" id="btnSignup">መለያ ፍጠር</button>
+      <button class="btn b-p" id="btnSignup" onclick="signup()">መለያ ፍጠር</button>
     </div>
     <div id="pForgot" class="hidden fade space-y-3 max-w-md mx-auto">
       <button onclick="authPanel('l')" class="text-indigo-300 text-sm">← ወደ መግቢያ ተመለስ</button>
@@ -2005,7 +2052,7 @@ window.B13_SITE_URL = 'https://bingob13-rgb.github.io/b13/';
       </div>
       <div id="ot-safe" class="hidden glass p-4 flex items-center justify-between gap-3">
         <div><h3 class="font-bold text-sm text-red-300">🛡️ ሴፍቲ ቁልፍ</h3><p class="text-[11px] text-slate-400">አፑን ያጥፉ — ተጫዋቾች መግባት አይችሉም</p></div>
-        <button id="safeBtn" class="btn sm b-ok">🟢 ON</button>
+        <button id="safeBtn" type="button" class="btn sm b-ok" onclick="toggleSafe()">🟢 ON</button>
       </div>
     </div>
   </main>
@@ -2850,13 +2897,49 @@ function speakBall(n) {
 }
 function beep() { sndNotify(); }
 
+
+function showBusy(on, msg) {
+  let el = document.getElementById('b13Busy');
+  if (on) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'b13Busy';
+      el.innerHTML = '<div class="b13-busy-box"><span class="b13-spin"></span><span id="b13BusyMsg">ቆይ...</span></div>';
+      document.body.appendChild(el);
+    }
+    const m = document.getElementById('b13BusyMsg');
+    if (m) m.textContent = msg || 'ቆይ...';
+    el.style.display = 'flex';
+  } else if (el) {
+    el.style.display = 'none';
+  }
+}
+
 function withLoading(btn, fn) {
   return async function(...args) {
-    if (btn.classList.contains('loading')) return;
-    btn.classList.add('loading'); btn.disabled = true;
+    if (!btn || btn.classList.contains('loading')) return;
+    btn.classList.add('loading');
+    btn.disabled = true;
+    if (btn.dataset._spinHtml == null) btn.dataset._spinHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="b13-spin" aria-hidden="true"></span><span>ቆይ...</span>';
     try { await fn(...args); }
-    finally { btn.classList.remove('loading'); btn.disabled = false; }
+    finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      if (btn.dataset._spinHtml != null) btn.innerHTML = btn.dataset._spinHtml;
+    }
   };
+}
+function spinBtn(btn, on) {
+  if (!btn) return;
+  if (on) {
+    if (btn.dataset._spinHtml == null) btn.dataset._spinHtml = btn.innerHTML;
+    btn.classList.add('loading'); btn.disabled = true;
+    btn.innerHTML = '<span class="b13-spin" aria-hidden="true"></span><span>ቆይ...</span>';
+  } else {
+    btn.classList.remove('loading'); btn.disabled = false;
+    if (btn.dataset._spinHtml != null) btn.innerHTML = btn.dataset._spinHtml;
+  }
 }
 
 // ===================== AUTH =====================
@@ -2943,6 +3026,8 @@ function extractRef(text) {
 const err = (id, m) => { const e = $(id); e.textContent = m; e.classList.remove('hidden'); };
 
 async function login() {
+  try {
+
   $('lErr').classList.add('hidden');
   const phone = $('lPhone').value.trim(), pw = $('lPass').value;
   if (!phone || !pw) return err('lErr', 'ስልክ እና የይለፍ ቃል ያስገቡ');
@@ -2982,6 +3067,13 @@ async function login() {
   if (r && !r.ok) return err('lErr', r.error === 'BLOCKED' ? 'መለያዎ ታግዷል — ባለቤቱን ያነጋግሩ' : r.error === 'LOCKED' ? 'ብዙ ሙከራ — ከ10 ደቂቃ በኋላ ይሞክሩ' : 'የተሳሳተ ስልክ ወይም የይለፍ ቃል');
   if (!r || !r.ok) return err('lErr', 'የተሳሳተ ስልክ ወይም የይለፍ ቃል');
   loginWith(r);
+  } catch (e) {
+    console.error(e);
+    try { err('lErr', 'ስህተት: ' + (e && e.message ? e.message : String(e))); } catch (e2) { alert('Login error: ' + e); }
+  } finally {
+    const btn = $('btnLogin');
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; btn.innerHTML = btn.dataset._old || 'ይግቡ'; }
+  }
 }
 
 async function signup() {
@@ -3338,6 +3430,7 @@ function ensureBalForReg(cards) {
 async function buy(n) {
   if (_buying) return;
   _buying = true;
+  showBusy(true, 'ካርድ በመግዛት...');
   try {
     fabOpen = false;
     const fm = $('fabMenu');
@@ -3393,11 +3486,13 @@ async function buy(n) {
     } else {
       toast(n + ' ካርድ ተመርጧል', 'i');
     }
-  } finally { _buying = false; }
+  } finally { _buying = false; showBusy(false); }
 }
 
 async function applyRegister(ids, on) {
   if (!ids.length) return false;
+  showBusy(true, on ? 'በመመዝገብ...' : 'በመመለስ...');
+  try {
   // Prefer server RPC (deducts balance when on=true). Fallback to direct update + client balance gate.
   let { data, error } = await sb.rpc('register_cards', { p_ids: ids, p_on: !!on, p_user: cur?.id || null });
   if (error && /p_user|register_cards|Could not find|PGRST202|does not exist/i.test((error.message || '') + (error.code || ''))) {
@@ -3419,6 +3514,7 @@ async function applyRegister(ids, on) {
   }
   if (data?.balance != null) cur.balance = Number(data.balance);
   return true;
+  } finally { showBusy(false); }
 }
 
 async function toggleReg(id) {
@@ -3540,6 +3636,8 @@ async function resetMarks() {
 }
 
 async function claim(id) {
+  showBusy(true, 'ቢንጎ በማረጋገጥ...');
+  try {
   if (!game || !['playing','claiming'].includes(game.status)) return toast('ጨዋታ አልተጀመረም', 'e');
   const c = myCards.find(x => x.id === id);
   if (!c) return;
@@ -3564,6 +3662,7 @@ async function claim(id) {
   if (!data || !data.valid) { sndWrong(); return toast('❌ ውሸት ቢንጎ! ካርድ ተቆልፏል', 'e'); }
   sndBingo();
   toast('🏆 ቢንጎ! ሌሎች ለ30 ሰከንድ ቢንጎ ማለት ይችላሉ', 'i');
+  } finally { showBusy(false); }
 }
 
 // ---- game types / patterns ----
@@ -4137,14 +4236,17 @@ async function transfer() {
 // ===================== FINANCE (admin) =====================
 async function finAct(id, action) {
   if (!isFA()) return;
-  const { error } = await sb.rpc('fin_act', { p_tx: id, p_action: action });
-  if (error) {
-    const m = error.message || '';
-    toast(m.includes('DONE') ? 'ጥያቄው ቀድሞ ተሰርቷል' : m.includes('INSUFFICIENT') ? 'የተጠቃሚው ቀሪ ሂሳብ በቂ አይደለም — መሻር አይቻልም' : isSchemaErr(error) ? 'production_setup.sql ገና አልተሰራም (Supabase SQL Editor)' : 'ስህተት — እንደገና ይሞክሩ', 'e');
-    return renderFin(true);
-  }
-  toast(action === 'APPROVE' ? '✓ ተፈቅዷል' : action === 'REJECT' ? 'ተሰርዟል' : '↩ ተሽሯል', action === 'REJECT' ? 'e' : 'i');
-  renderFin(true);
+  showBusy(true, action === 'APPROVE' ? 'በመፈቀድ ላይ...' : action === 'REJECT' ? 'በመሰረዝ ላይ...' : 'ቆይ...');
+  try {
+    const { error } = await sb.rpc('fin_act', { p_tx: id, p_action: action });
+    if (error) {
+      const m = error.message || '';
+      toast(m.includes('DONE') ? 'ጥያቄው ቀድሞ ተሰርቷል' : m.includes('INSUFFICIENT') ? 'የተጠቃሚው ቀሪ ሂሳብ በቂ አይደለም — መሻር አይቻልም' : isSchemaErr(error) ? 'production_setup.sql ገና አልተሰራም (Supabase SQL Editor)' : 'ስህተት — እንደገና ይሞክሩ', 'e');
+      return renderFin(true);
+    }
+    toast(action === 'APPROVE' ? '✓ ተፈቅዷል' : action === 'REJECT' ? 'ተሰርዟል' : '↩ ተሽሯል', action === 'REJECT' ? 'e' : 'i');
+    renderFin(true);
+  } finally { showBusy(false); }
 }
 const approve = id => finAct(id, 'APPROVE');
 const reject = id => finAct(id, 'REJECT');
@@ -4161,27 +4263,43 @@ function setFTab(t) {
 
 // ===================== OWNER =====================
 async function toggleSafe() {
-  if (cur.role !== 'OWNER') return;
-  const newVal = !settings.app_on;
-  let error = null;
-  // Prefer RPC; always also try direct update so Owner can turn safety back ON
   try {
-    const r = await sb.rpc('owner_set_app', { p_on: newVal, p_user: cur?.id || null });
-    error = r.error;
-  } catch (e) { error = e; }
-  if (error && /PGRST202|42883|Could not find|schema cache/i.test((error.message || '') + ' ' + (error.code || ''))) {
-    error = null;
+    if (!cur || cur.role !== 'OWNER') { toast('Owner ብቻ', 'e'); return; }
+    const curOn = !!(settings && settings.app_on);
+    const newVal = !curOn;
+    const sf = $('safeBtn');
+    if (sf) { sf.disabled = true; sf.textContent = '...'; }
+    const { data, error } = await sb.rpc('owner_set_app', { p_on: newVal, p_user: cur.id });
+    if (error) {
+      if (sf) { sf.disabled = false; sf.textContent = curOn ? '🟢 ON' : '🔴 OFF'; }
+      toast('ሴፍቲ አልተቀየረም: ' + (error.message || '').slice(0, 90), 'e');
+      return;
+    }
+    if (data && data.ok === false) {
+      if (sf) { sf.disabled = false; sf.textContent = curOn ? '🟢 ON' : '🔴 OFF'; }
+      toast('ሴፍቲ: ' + (data.error || 'error'), 'e');
+      return;
+    }
+    if (!settings) settings = {};
+    settings.app_on = newVal;
+    try { await loadSettings(); } catch (e) {}
+    settings.app_on = newVal;
+    if (sf) {
+      sf.disabled = false;
+      sf.textContent = newVal ? '🟢 ON' : '🔴 OFF';
+      sf.className = 'btn sm ' + (newVal ? 'b-ok' : 'b-bad');
+    }
+    try { renderAppClosedBanner(); } catch (e) {}
+    try { render(); } catch (e) {}
+    toast(newVal ? '🟢 Safety ON — አፕ ክፍት' : '🔴 Safety OFF — ዩዘር ጨዋታ አይገባም', newVal ? 'i' : 'e');
+  } catch (e) {
+    toast('ሴፍቲ ስህተት: ' + (e && e.message ? e.message : e), 'e');
+    const sf = $('safeBtn');
+    if (sf) sf.disabled = false;
   }
-  {
-    const r2 = await sb.from('settings').update({ app_on: newVal }).eq('id', 1);
-    if (r2.error) error = r2.error;
-  }
-  if (error) return toast('ሴፍቲ መቀየር አልተቻለም: ' + (error.message || '').slice(0, 70), 'e');
-  await loadSettings();
-  if (settings.app_on !== newVal) return toast('ሴፍቲ አልተቀየረም — በSupabase: update settings set app_on=' + newVal + ' where id=1;', 'e');
-  render();
-  toast(newVal ? '🟢 አፕ በርቷል' : '🔴 አፕ ጠፍቷል', newVal ? '' : 'e');
 }
+window.toggleSafe = toggleSafe;
+
 
 async function addAdmin() {
   if (cur.role !== 'OWNER') return;
@@ -5258,7 +5376,8 @@ function startRealtime() {
 async 
 function renderAppClosedBanner() {
   let el = document.getElementById('appClosedBanner');
-  const closed = settings && settings.app_on === false;
+  // Owner always has full access even when app_on is false
+  const closed = settings && settings.app_on === false && cur && cur.role !== 'OWNER';
   if (!closed) {
     if (el) el.remove();
     return;
@@ -5283,7 +5402,7 @@ function renderAppClosedBanner() {
   }
 }
 
-function enter() {
+async function enter() {
   $('auth').classList.add('hidden');
   $('app').classList.remove('hidden');
   buildFab(); applyPrefs();
@@ -5446,6 +5565,7 @@ window.addEventListener('load', async () => {
   }, 900);
   applyPrefs();
   try { await loadSettings(); } catch (e) { console.warn('loadSettings', e); }
+  window.login = login; window.signup = signup; window.installApp = installApp;
   $('btnLogin').onclick = withLoading($('btnLogin'), login);
   $('btnSignup').onclick = withLoading($('btnSignup'), signup);
   $('btnSetupOwner').onclick = withLoading($('btnSetupOwner'), setupOwner);
