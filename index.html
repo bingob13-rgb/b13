@@ -5439,8 +5439,13 @@ if ('serviceWorker' in navigator && !isLocalFile) {
   }, true);
 })();
 window.addEventListener('load', async () => {
+  // Always dismiss splash even if network/SQL is slow
+  setTimeout(() => {
+    const x = document.getElementById('splash');
+    if (x) { x.style.transition = 'opacity .4s'; x.style.opacity = '0'; setTimeout(() => x.remove(), 450); }
+  }, 900);
   applyPrefs();
-  await loadSettings();
+  try { await loadSettings(); } catch (e) { console.warn('loadSettings', e); }
   $('btnLogin').onclick = withLoading($('btnLogin'), login);
   $('btnSignup').onclick = withLoading($('btnSignup'), signup);
   $('btnSetupOwner').onclick = withLoading($('btnSetupOwner'), setupOwner);
@@ -5473,7 +5478,8 @@ window.addEventListener('load', async () => {
   $('dRef').addEventListener('input', e => { const v = e.target.value; if (/\s/.test(v.trim()) || v.length > 24) { const r = extractRef(v); if (r) e.target.value = r; } });
 
   setTimeout(() => {
-    const x = $('splash');
+    const x = document.getElementById('splash');
+    if (!x) return;
     x.style.transition = 'opacity .5s'; x.style.opacity = '0';
     setTimeout(() => x.remove(), 520);
   }, 1500);
