@@ -2875,14 +2875,57 @@ function sndWrong() {
     o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 0.4);
   });
 }
-// ---- English ball calling ----
+// ---- English ball calling (accurate, no mismatch) ----
+const _NUM_WORDS = [
+  'zero','one','two','three','four','five','six','seven','eight','nine','ten',
+  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'
+];
+const _TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy'];
+function numberWord(n) {
+  n = Number(n) || 0;
+  if (n < 20) return _NUM_WORDS[n];
+  const t = _TENS[Math.floor(n / 10)] || '';
+  const o = n % 10;
+  return o ? (t + ' ' + _NUM_WORDS[o]) : t;
+}
+// Only the latest ball is spoken (prevents old number speaking after a newer one)
+let _speakToken = 0;
+let _speakTimer = null;
 function speakBall(n) {
   if (!prefs.voice || !n || !('speechSynthesis' in window)) return;
-  try {
-    const u = new SpeechSynthesisUtterance(letter(n) + ' ' + n);
-    u.lang = 'en-US'; u.rate = 0.9;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
-  } catch (e) {}
+  n = Number(n);
+  if (!n || n < 1 || n > 75) return;
+  const myToken = ++_speakToken;
+  const text = letter(n) + ', ' + numberWord(n); // e.g. "B, thirteen"
+  clearTimeout(_speakTimer);
+  const doSpeak = () => {
+    if (myToken !== _speakToken) return; // superseded by a newer ball
+    try {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 0.88;
+      u.pitch = 1;
+      u.volume = 1;
+      // Prefer a clear English voice when available
+      try {
+        const voices = speechSynthesis.getVoices() || [];
+        const en = voices.find(v => /en-US/i.test(v.lang) && /Google|Natural|Premium|Enhanced/i.test(v.name))
+          || voices.find(v => /en-US/i.test(v.lang))
+          || voices.find(v => /^en/i.test(v.lang));
+        if (en) u.voice = en;
+      } catch (e) {}
+      u.onend = () => {};
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  };
+  // Small delay after cancel so Android TTS does not speak a mangled previous number
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    try { speechSynthesis.cancel(); } catch (e) {}
+    _speakTimer = setTimeout(doSpeak, 120);
+  } else {
+    _speakTimer = setTimeout(doSpeak, 40);
+  }
 }
 function beep() { sndNotify(); }
 
@@ -5354,10 +5397,19 @@ function toggleFab() {
   }
 }
 
+
+// Preload TTS voices (Android often loads them late)
+if ('speechSynthesis' in window) {
+  try { speechSynthesis.getVoices(); } catch (e) {}
+  try { speechSynthesis.addEventListener('voiceschanged', () => { try { speechSynthesis.getVoices(); } catch(e){} }); } catch (e) {}
+}
+
 // ===================== REALTIME =====================
+let _rtChannel = null;
 function startRealtime() {
-  sb.channel('b13')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => syncGame())
+  try { if (_rtChannel) { sb.removeChannel(_rtChannel); } } catch (e) {}
+  _rtChannel = sb.channel('b13-' + Date.now())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => { syncGame(true); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'cards' }, async () => { await refreshMyCards(); await refreshGameCards(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, async () => { await loadSettings(); render(); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, async () => { await refreshUser(); render(); })
@@ -5368,8 +5420,26 @@ function startRealtime() {
       if (page === 'wallet') renderMyTx();
       if (page === 'owner') renderOwner(true);
     })
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') console.log('realtime ok');
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        setTimeout(() => { try { startRealtime(); } catch(e){} }, 3000);
+      }
+    });
 }
+
+// PWA / mobile: when app comes back to foreground, force sync + restart realtime
+function onAppResume() {
+  try { startRealtime(); } catch (e) {}
+  try { syncGame(true); } catch (e) {}
+  try { refreshUser(); } catch (e) {}
+  try { render(); } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') onAppResume();
+});
+window.addEventListener('pageshow', (e) => { onAppResume(); });
+window.addEventListener('focus', () => { onAppResume(); });
 
 // ===================== INIT =====================
 // fixed: removed stray async
@@ -5417,8 +5487,12 @@ async function enter() {
   renderAppClosedBanner();
   pushB13({ kind: 'trap', page });
   clearInterval(tick);
+  // PWA/standalone needs more aggressive polling because timers get throttled
+  const tickMs = (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) ? 1500 : 2000;
   tick = setInterval(async () => {
     if (tickBusy) return;
+    // If tab/app is hidden, skip heavy work (pg_cron still runs on server)
+    if (document.visibilityState === 'hidden') { return; }
     tickBusy = true;
     try {
       // 1) Primary: server-side auto_tick
@@ -5437,14 +5511,12 @@ async function enter() {
           const elapsed = (Date.now() - last) / 1000;
           const drawn = game.drawn || [];
           if (elapsed >= ivl && drawn.length < 75 && isGA()) {
-            // direct draw (same as manual btnDraw)
             let n;
             do { n = 1 + Math.floor(Math.random() * 75); } while (drawn.includes(n));
             const next = [...drawn, n];
             await sb.from('games').update({ drawn: next, last_draw: new Date().toISOString() }).eq('id', game.id);
             game.drawn = next;
             game.last_draw = new Date().toISOString();
-            // refresh UI quickly
             try { render(); } catch(e) {}
           }
         }
@@ -5452,9 +5524,10 @@ async function enter() {
 
       await refreshUser();
       if (page === 'admin' && isFA()) renderFin();
-      await syncGame(++tickN % 2 === 0);
+      // Always sync game state so PWA UI stays live without manual refresh
+      await syncGame(true);
     } finally { tickBusy = false; }
-  }, 2000); // slightly faster tick for smoother calling
+  }, tickMs);
   clearInterval(cdTimer); cdTimer = setInterval(updCountdown, 1000);
 }
 
