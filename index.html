@@ -100,19 +100,8 @@ body {
 }
 .b-gray { background: #2a2f45; }
 
-.btn.loading { opacity: 0.7; pointer-events: none; }
-.btn.loading::after {
-  content: "";
-  position: absolute;
-  width: 18px; height: 18px;
-  top: 50%; left: 50%;
-  margin: -9px 0 0 -9px;
-  border: 2.5px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+.btn.loading { opacity: 0.92; pointer-events: none; }
+/* old ::after spinner removed — we use .b13-spin only (single spinner) */
 
 /* ========== DARK THEME BASE ========== */
 html:not(.light) body {
@@ -5376,7 +5365,7 @@ function startRealtime() {
 }
 
 // ===================== INIT =====================
-async 
+// fixed: removed stray async
 function renderAppClosedBanner() {
   let el = document.getElementById('appClosedBanner');
   // Owner always has full access even when app_on is false
