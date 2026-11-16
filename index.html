@@ -3391,7 +3391,7 @@ const isFA = () => cur && ['ADMIN_FINANCE','OWNER'].includes(cur.role);
 const gamePrice = () => Number(game?.price ?? settings?.price ?? 50);
 const nextPrice = () => { const q = settings?.game_queue; return (settings?.auto_on && Array.isArray(q) && q.length) ? Number(q[(settings.queue_idx || 0) % q.length].price) : Number(settings?.price ?? 50); };
 const canEdit = () => game && ['waiting','ready'].includes(game.status);
-const canReg = () => game && ['waiting','ready','preparing'].includes(game.status);
+const canReg = () => game && (['waiting','ready','preparing'].includes(game.status) || (game.status==='playing' && !(game.drawn&&game.drawn.length)));
 const ROLE_LBL = { OWNER:'👑 ኦነር', ADMIN_GAME:'🎮 ጨዋታ አድሚን', ADMIN_FINANCE:'💰 ሒሳብ አድሚን', USER:'ተጫዋች' };
 const STAT_LBL = { waiting:'ቀጣይ ጨዋታ', ready:'ዝግጁ', preparing:'በዝግጅት', playing:'በጨዋታ ላይ', claiming:'ቢንጎ ተብሏል', finished:'ጨዋታ ተጠናቋል' };
 const TX_LBL = { DEPOSIT:['⬇ ዲፖዚት','text-emerald-400'], WITHDRAW:['⬆ ዊዝድሮው','text-amber-400'], TRANSFER_OUT:['⇄ ተላከ','text-red-400'], TRANSFER_IN:['⇄ ተቀበለ','text-emerald-400'], PRIZE:['🏆 ሽልማት','text-amber-400'] };
@@ -3509,7 +3509,7 @@ async function applyRegister(ids, on) {
   }
   if (error) {
     const m = error.message || '';
-    toast(m.includes('INSUFFICIENT') ? 'በቂ ቀሪ ሂሳብ የለዎትም' : 'ስህተት', 'e');
+    toast(m.includes('INSUFFICIENT') ? 'በቂ ቀሪ ሂሳብ የለዎትም' : m.includes('LOCKED') ? 'ጨዋታ በመካሄድ ላይ — ትንሽ ይጠብቁ ወይም አዲስ ጨዋታ' : 'ስህተት: ' + m.slice(0,50), 'e');
     return false;
   }
   if (data?.balance != null) cur.balance = Number(data.balance);
@@ -4218,7 +4218,7 @@ async function transfer() {
   const { data: rs } = await sb.rpc('lookup_user', { p_phone: phone });
   if (!rs || !rs.name) return toast('ይህ ስልክ ያለው ተጠቃሚ አልተገኘም', 'e');
   if (!confirm(fmt(amt) + ' ብር ወደ ' + rs.name + ' (' + rs.phone + ') ይላክ?')) return;
-  const { error } = await sb.rpc('app_transfer', { p_to_phone: phone, p_amount: amt });
+  const { error } = await sb.rpc('app_transfer', { p_amount: amt, p_to_phone: phone, p_user: cur?.id || null });
   if (error) {
     const m = error.message || '';
     return toast(
@@ -4302,27 +4302,30 @@ window.toggleSafe = toggleSafe;
 
 
 async function addAdmin() {
-  if (cur.role !== 'OWNER') return;
-  $('aErr').classList.add('hidden');
-  const role = $('aRole').value, name = $('aName').value.trim(), phone = $('aPhone').value.trim(), pw = $('aPass').value;
-  if (!name) return err('aErr', 'ስም ያስገቡ');
-  if (!/^09\d{8}$/.test(phone)) return err('aErr', 'ትክክለኛ ስልክ (09xxxxxxxx)');
-  if (pw.length < 4) return err('aErr', 'የይለፍ ቃል ቢያንስ 4 ቁምፊ');
-  const salt = newSalt(), hash = await hashPw(pw, salt), args = { p_phone: phone, p_name: name, p_salt: salt, p_hash: hash, p_role: role, p_force: false };
-  let { data: r, error } = await sb.rpc('staff_set', args);
-  if (!error && r && !r.ok && r.error === 'EXISTS') {
-    if (!confirm('ይህ ስልክ ቀድሞ ተመዝግቧል። ወደ አድሚን ልቀይረው? (የይለፍ ቃል ይቀየራል)')) return;
-    ({ data: r, error } = await sb.rpc('staff_set', { ...args, p_force: true }));
+  if (!cur || cur.role !== 'OWNER') return toast('Owner ብቻ', 'e');
+  try {
+    $('aErr').classList.add('hidden');
+    const role = $('aRole').value, name = $('aName').value.trim(), phone = $('aPhone').value.trim(), pw = $('aPass').value;
+    if (!name) return err('aErr', 'ስም ያስገቡ');
+    if (!/^09\d{8}$/.test(phone)) return err('aErr', 'ትክክለኛ ስልክ (09xxxxxxxx)');
+    if (pw.length < 4) return err('aErr', 'የይለፍ ቃል ቢያንስ 4 ቁምፊ');
+    const salt = newSalt(), hash = await hashPw(pw, salt);
+    const args = { p_phone: phone, p_name: name, p_salt: salt, p_hash: hash, p_role: role, p_force: true, p_owner: cur.id };
+    let { data: r, error } = await sb.rpc('staff_set', args);
+    if (error) return err('aErr', 'RPC: ' + (error.message || 'failed').slice(0, 80));
+    if (!r || !r.ok) return err('aErr', r?.error === 'OWNER' ? 'የኦነር ስልክ ነው' : (r?.error || 'ስህተት'));
+    $('aName').value = $('aPhone').value = $('aPass').value = '';
+    toast('✓ አድሚን ተፈጥሯል: ' + phone + ' (' + role + ')');
+    renderOwner(true);
+  } catch (e) {
+    err('aErr', String(e.message || e).slice(0, 80));
   }
-  if (error || !r?.ok) return err('aErr', r?.error === 'OWNER' ? 'ይህ ስልክ የኦነር ነው' : 'ስህተት ተፈጥሯል');
-  $('aName').value = $('aPhone').value = $('aPass').value = '';
-  toast('✓ አድሚን ተፈጥሯል');
-  renderOwner(true);
 }
+
 
 async function removeAdmin(id) {
   if (cur.role !== 'OWNER' || !confirm('ይህን አድሚን ወደ ተጫዋችነት ልመልሰው?')) return;
-  await sb.rpc('staff_remove', { p_id: id });
+  await sb.rpc('staff_remove', { p_id: id, p_owner: cur?.id || null });
   toast('ተመልሷል', 'i');
   renderOwner(true);
 }
@@ -5557,45 +5560,116 @@ if ('serviceWorker' in navigator && !isLocalFile) {
     n.classList.toggle('nav-hide', d > 0 && y > 60);
   }, true);
 })();
+// ---- Robust init + visible error reporting (fixes silent button clicks) ----
+window.onerror = function (msg, src, line, col, err) {
+  console.error('B13 ERR', msg, src, line, col, err);
+  try {
+    const t = document.getElementById('toast');
+    if (t) {
+      t.textContent = '⚠ JS: ' + String(msg).slice(0, 120);
+      t.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-xl text-sm font-bold shadow-2xl text-white max-w-[90%] text-center';
+      t.style.background = '#dc2626';
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 8000);
+    } else {
+      alert('B13 Error: ' + msg);
+    }
+  } catch (e) {}
+  return false;
+};
+window.addEventListener('unhandledrejection', function (ev) {
+  console.error('B13 Promise', ev.reason);
+  try {
+    const m = (ev.reason && (ev.reason.message || String(ev.reason))) || 'Promise error';
+    toast('⚠ ' + m.slice(0, 100), 'e');
+  } catch (e) {}
+});
+
+function safeBind(id, fn) {
+  const el = $(id);
+  if (!el) {
+    console.warn('B13 missing element:', id);
+    return;
+  }
+  el.onclick = withLoading(el, fn);
+}
+
 window.addEventListener('load', async () => {
   // Always dismiss splash even if network/SQL is slow
   setTimeout(() => {
     const x = document.getElementById('splash');
     if (x) { x.style.transition = 'opacity .4s'; x.style.opacity = '0'; setTimeout(() => x.remove(), 450); }
   }, 900);
-  applyPrefs();
+  try { applyPrefs(); } catch (e) { console.warn('applyPrefs', e); }
   try { await loadSettings(); } catch (e) { console.warn('loadSettings', e); }
-  window.login = login; window.signup = signup; window.installApp = installApp;
-  $('btnLogin').onclick = withLoading($('btnLogin'), login);
-  $('btnSignup').onclick = withLoading($('btnSignup'), signup);
-  $('btnSetupOwner').onclick = withLoading($('btnSetupOwner'), setupOwner);
-  $('btnDeposit').onclick = withLoading($('btnDeposit'), deposit);
-  $('btnWithdraw').onclick = withLoading($('btnWithdraw'), withdraw);
-  $('btnTransfer').onclick = withLoading($('btnTransfer'), transfer);
-  $('btnApplyCfg').onclick = withLoading($('btnApplyCfg'), applyCfg);
-  $('btnPrepare').onclick = withLoading($('btnPrepare'), prepare);
-  $('btnStart').onclick = withLoading($('btnStart'), startGame);
-  $('btnDraw').onclick = withLoading($('btnDraw'), draw);
-  $('btnReset').onclick = withLoading($('btnReset'), resetGame);
-  $('btnNew').onclick = withLoading($('btnNew'), () => newGame(false));
-  $('safeBtn').onclick = withLoading($('safeBtn'), toggleSafe);
-  $('btnAddAdmin').onclick = withLoading($('btnAddAdmin'), addAdmin);
-  $('btnForgot').onclick = withLoading($('btnForgot'), forgotSubmit);
-  $('btnOtp').onclick = withLoading($('btnOtp'), async () => { await submitOtp(); chkOtp(); });
-  const oi = otpIn();
-  oi.forEach((el, i) => {
-    el.addEventListener('input', () => { el.value = el.value.replace(/\D/g, '').slice(-1); if (el.value && oi[i + 1]) oi[i + 1].focus(); chkOtp(); });
-    el.addEventListener('keydown', e => { if (e.key === 'Backspace' && !el.value && oi[i - 1]) oi[i - 1].focus(); });
-    el.addEventListener('paste', e => { const d = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\D/g, '').slice(0, 4); if (d) { e.preventDefault(); oi.forEach((x, k) => x.value = d[k] || ''); chkOtp(); } });
-  });
-  $('dRef').addEventListener('paste', e => {
-    const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
-    e.preventDefault();
-    const r = extractRef(txt);
-    $('dRef').value = r || txt.trim().slice(0, 30).toUpperCase();
-    toast(r ? 'Ref ቁጥር ተገኝቷል: ' + r : 'Ref ቁጥር አልተገኘም — ያረጋግጡ', r ? '' : 'i');
-  });
-  $('dRef').addEventListener('input', e => { const v = e.target.value; if (/\s/.test(v.trim()) || v.length > 24) { const r = extractRef(v); if (r) e.target.value = r; } });
+
+  // Expose critical functions globally so inline onclick always works
+  window.login = login;
+  window.signup = signup;
+  window.installApp = installApp;
+  window.editQ = editQ;
+  window.addQ10 = addQ10;
+  window.clearQ = clearQ;
+  window.stp = stp;
+  window.mvQ = mvQ;
+  window.dupQ = dupQ;
+  window.delQ = delQ;
+  window.saveQ = saveQ;
+  window.applyCfg = applyCfg;
+  window.transfer = transfer;
+  window.withdraw = withdraw;
+  window.deposit = deposit;
+  window.addAdmin = addAdmin;
+  window.openM = openM;
+  window.closeM = closeM;
+  window.go = go;
+  window.toggleAutoNow = toggleAutoNow;
+  window.setAdmTab = setAdmTab;
+  window.oTab = oTab;
+  window.renderQueue = renderQueue;
+
+  // Safe bindings (never throw if an element is missing)
+  safeBind('btnLogin', login);
+  safeBind('btnSignup', signup);
+  safeBind('btnSetupOwner', setupOwner);
+  safeBind('btnDeposit', deposit);
+  safeBind('btnWithdraw', withdraw);
+  safeBind('btnTransfer', transfer);
+  safeBind('btnApplyCfg', applyCfg);
+  safeBind('btnPrepare', prepare);
+  safeBind('btnStart', startGame);
+  safeBind('btnDraw', draw);
+  safeBind('btnReset', resetGame);
+  safeBind('btnNew', () => newGame(false));
+  safeBind('safeBtn', toggleSafe);
+  safeBind('btnAddAdmin', addAdmin);
+  safeBind('btnForgot', forgotSubmit);
+  safeBind('btnOtp', async () => { await submitOtp(); chkOtp(); });
+
+  try {
+    const oi = otpIn();
+    if (oi && oi.length) {
+      oi.forEach((el, i) => {
+        el.addEventListener('input', () => { el.value = el.value.replace(/\D/g, '').slice(-1); if (el.value && oi[i + 1]) oi[i + 1].focus(); chkOtp(); });
+        el.addEventListener('keydown', e => { if (e.key === 'Backspace' && !el.value && oi[i - 1]) oi[i - 1].focus(); });
+        el.addEventListener('paste', e => { const d = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\D/g, '').slice(0, 4); if (d) { e.preventDefault(); oi.forEach((x, k) => x.value = d[k] || ''); chkOtp(); } });
+      });
+    }
+  } catch (e) { console.warn('otp bind', e); }
+
+  try {
+    const dRef = $('dRef');
+    if (dRef) {
+      dRef.addEventListener('paste', e => {
+        const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
+        e.preventDefault();
+        const r = extractRef(txt);
+        dRef.value = r || txt.trim().slice(0, 30).toUpperCase();
+        toast(r ? 'Ref ቁጥር ተገኝቷል: ' + r : 'Ref ቁጥር አልተገኘም — ያረጋግጡ', r ? '' : 'i');
+      });
+      dRef.addEventListener('input', e => { const v = e.target.value; if (/\s/.test(v.trim()) || v.length > 24) { const r = extractRef(v); if (r) e.target.value = r; } });
+    }
+  } catch (e) { console.warn('dRef bind', e); }
 
   setTimeout(() => {
     const x = document.getElementById('splash');
@@ -5604,13 +5678,29 @@ window.addEventListener('load', async () => {
     setTimeout(() => x.remove(), 520);
   }, 1500);
 
-  const { data: _ho } = await sb.rpc('has_owner');
-  if (_ho === false) setTimeout(() => openM('mSetup'), 1800);
+  try {
+    const { data: _ho } = await sb.rpc('has_owner');
+    if (_ho === false) setTimeout(() => openM('mSetup'), 1800);
+  } catch (e) { console.warn('has_owner', e); }
 
   if (B13_TOK) {
-    const { data } = await sb.rpc('app_me');
-    if (data && data.blocked !== true) { cur = data; enter(); } else setSession('');
+    try {
+      const { data } = await sb.rpc('app_me');
+      if (data && data.blocked !== true) { cur = data; enter(); } else setSession('');
+    } catch (e) {
+      console.warn('app_me', e);
+      setSession('');
+    }
   }
+
+  // Final safety: re-bind critical buttons after a short delay (in case DOM was altered)
+  setTimeout(() => {
+    safeBind('btnApplyCfg', applyCfg);
+    safeBind('btnTransfer', transfer);
+    safeBind('btnWithdraw', withdraw);
+    safeBind('btnDeposit', deposit);
+    safeBind('btnAddAdmin', addAdmin);
+  }, 600);
 });
 </script>
 </body>
