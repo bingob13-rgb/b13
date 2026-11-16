@@ -3942,12 +3942,14 @@ async function startGame() {
   if (!isGA()) return;
   if (game.status === 'finished') return newGame(true);
   if (['playing','claiming'].includes(game.status)) return toast('ጨዋታ በመካሄድ ላይ', 'e');
+  const ivl = Math.max(2, Number(game?.interval_sec || settings?.interval_sec || 10));
   await sb.from('games').update({
     status: 'playing', drawn: [], draw_on: true, claim_end: null, finished_at: null,
     last_draw: new Date().toISOString(), type: game.type || settings?.game_type || 'line',
+    interval_sec: ivl,
     code: Math.random().toString(16).slice(2, 10)
   }).eq('id', game.id);
-  toast('🎲 ጨዋታ ተጀምሯል');
+  toast('🎲 ጨዋታ ተጀምሯል — ኳስ በየ ' + ivl + ' ሰከንድ');
 }
 async function draw() {
   if (!isGA() || game.status !== 'playing') return;
@@ -4446,7 +4448,12 @@ function updCountdown() {
   if (wait && game.start_at && settings?.auto_on) {
     const sec = Math.max(0, Math.ceil((new Date(game.start_at) - Date.now()) / 1000));
     txt = (sec === 0 && !gameCards.some(c => c.registered)) ? '⚠ ማንም አልተመዘገበም — ተጫዋች እስኪመዘገብ ይጠብቃል' : '⏳ ቀጣይ ጨዋታ በ ' + new Date(game.start_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' — ' + String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0') + ' ይቀራል';
-  } else if (game.status === 'playing') txt = '🎲 ኳስ እየተጠራ ነው — በየ ' + (settings?.interval_sec || 10) + ' ሰከንድ';
+  } else if (game.status === 'playing') {
+    const ivl = Math.max(2, Number(game.interval_sec || settings?.interval_sec || 10));
+    const last = game.last_draw ? new Date(game.last_draw).getTime() : Date.now();
+    const left = Math.max(0, Math.ceil(ivl - (Date.now() - last) / 1000));
+    txt = '🎲 ኳስ እየተጠራ ነው — ቀጣይ በ ' + left + ' ሰከንድ (በየ ' + ivl + 'ሠ)';
+  }
   else if (game.status === 'claiming') txt = '🏆 ቢንጎ ተብሏል — ሌሎች እየተጠባበቁ ነው';
   else if (game.status === 'finished') txt = '🏁 ጨዋታ ተጠናቋል' + (settings?.auto_on ? ' — ቀጣይ በቅርቡ ይፈጠራል' : '');
   el.textContent = txt; el.classList.toggle('hidden', !txt);
@@ -5414,15 +5421,40 @@ async function enter() {
     if (tickBusy) return;
     tickBusy = true;
     try {
+      // 1) Primary: server-side auto_tick
       if (autoOK) {
         const { error } = await sb.rpc('auto_tick');
-        if (error && /PGRST202|Could not find|does not exist/i.test((error.code || '') + ' ' + (error.message || ''))) autoOK = false;
+        if (error && /PGRST202|Could not find|does not exist/i.test((error.code || '') + ' ' + (error.message || ''))) {
+          autoOK = false;
+          console.warn('auto_tick RPC missing — using client fallback');
+        }
       }
+      // 2) Client fallback: if game is playing and interval has passed, force a draw
+      try {
+        if (game && game.status === 'playing' && (game.draw_on !== false)) {
+          const ivl = Math.max(2, Number(game.interval_sec || settings?.interval_sec || 10));
+          const last = game.last_draw ? new Date(game.last_draw).getTime() : 0;
+          const elapsed = (Date.now() - last) / 1000;
+          const drawn = game.drawn || [];
+          if (elapsed >= ivl && drawn.length < 75 && isGA()) {
+            // direct draw (same as manual btnDraw)
+            let n;
+            do { n = 1 + Math.floor(Math.random() * 75); } while (drawn.includes(n));
+            const next = [...drawn, n];
+            await sb.from('games').update({ drawn: next, last_draw: new Date().toISOString() }).eq('id', game.id);
+            game.drawn = next;
+            game.last_draw = new Date().toISOString();
+            // refresh UI quickly
+            try { render(); } catch(e) {}
+          }
+        }
+      } catch (e) { console.warn('client draw fallback', e); }
+
       await refreshUser();
       if (page === 'admin' && isFA()) renderFin();
       await syncGame(++tickN % 2 === 0);
     } finally { tickBusy = false; }
-  }, 3000);
+  }, 2000); // slightly faster tick for smoother calling
   clearInterval(cdTimer); cdTimer = setInterval(updCountdown, 1000);
 }
 
@@ -5490,28 +5522,63 @@ window.addEventListener('appinstalled', () => {
   toast('✓ አፑ ተጭኗል');
 });
 async function installApp() {
+  // Already installed?
+  if (isStandalone || isAppInstalled()) {
+    toast('✓ አፑ አስቀድሞ ተጭኗል', 'i');
+    hideInstallButtons();
+    return;
+  }
+  // Local file cannot install
+  if (isLocalFile) {
+    toast('ከማውረጃ ፋይል አይጫንም። https://bingob13-rgb.github.io/b13/ ይክፈቱ', 'i');
+    return;
+  }
+  // iOS Safari
+  if (isIOS) {
+    toast('Safari ላይ: Share ⬆️ → «Add to Home Screen» ይጫኑ', 'i');
+    return;
+  }
+  // Register SW first (helps trigger installability)
+  try {
+    if ('serviceWorker' in navigator) {
+      await navigator.serviceWorker.register('./sw.js');
+    }
+  } catch (e) {}
+
+  // Native install prompt available
   if (_ip) {
     try {
       _ip.prompt();
       const choice = await _ip.userChoice;
       _ip = null;
-      if (choice?.outcome === 'accepted') toast('✓ አፑ ተጭኗል');
+      if (choice?.outcome === 'accepted') {
+        toast('✓ አፑ ተጭኗል');
+        hideInstallButtons();
+      } else {
+        toast('ጭነት ተሰርዟል', 'i');
+      }
       return;
     } catch (err) { _ip = null; }
   }
-  if (isStandalone) { toast('አፑ አስቀድሞ ተጭኗል', 'i'); return; }
-  if (isLocalFile) {
-    toast('ከማውረጃ ፋይል አይጫንም። https://bingob13-rgb.github.io/b13/ ይክፈቱ', 'i');
-    return;
-  }
-  if (isIOS) { toast('Safari: Share ⬆️ → Add to Home Screen', 'i'); return; }
-  try { if ('serviceWorker' in navigator) await navigator.serviceWorker.register('./sw.js'); } catch (e) {}
+
+  // Wait a bit for beforeinstallprompt
   toast('ጭነት በመጠበቅ…', 'i');
-  for (let i = 0; i < 8 && !_ip; i++) await new Promise(r => setTimeout(r, 400));
+  for (let i = 0; i < 10 && !_ip; i++) await new Promise(r => setTimeout(r, 400));
   if (_ip) {
-    try { _ip.prompt(); await _ip.userChoice; _ip = null; return; } catch (e) {}
+    try {
+      _ip.prompt();
+      const choice = await _ip.userChoice;
+      _ip = null;
+      if (choice?.outcome === 'accepted') {
+        toast('✓ አፑ ተጭኗል');
+        hideInstallButtons();
+      }
+      return;
+    } catch (e) {}
   }
-  toast('⋮ ሜኑ → «Install app» ወይም «Add to Home screen» ይጫኑ', 'i');
+
+  // Fallback instructions
+  toast('Chrome ሜኑ ⋮ → «Install app» ወይም «Add to Home screen» ይጫኑ', 'i');
 }
 function hideInstallButtons() {
   document.querySelectorAll('.inst').forEach(b => b.classList.add('hidden'));
